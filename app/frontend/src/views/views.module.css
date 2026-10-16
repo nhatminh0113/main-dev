@@ -67,10 +67,13 @@
   top: 50%;
   left: var(--space-3);
   color: var(--color-text-subtle);
+  pointer-events: none;
   transform: translateY(-50%);
 }
 
-.searchInput {
-  padding-left: 40px;
+/* Two classes: must win over the global .input padding regardless of CSS order. */
+.search .searchInput {
+  min-height: 44px;
+  padding-left: 42px;
   font-size: var(--font-size-lg);
 }

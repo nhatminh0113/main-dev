@@ -8,6 +8,8 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 5173,
+    // Windows drives mounted in WSL (/mnt/c, /mnt/d) do not emit file-change events.
+    watch: { usePolling: process.cwd().startsWith('/mnt/') },
     proxy: {
       // The app always calls relative /api paths; in production the Ingress
       // (or nginx in Docker Compose) routes them to the backend.

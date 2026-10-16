@@ -36,10 +36,12 @@ export const SearchIcon = (p: IconProps) => (
   </Svg>
 )
 
-export const InboxIcon = (p: IconProps) => (
+/** "Ghi nhanh" (quick capture): a note with a pencil. */
+export const QuickNoteIcon = (p: IconProps) => (
   <Svg {...p}>
-    <path d="M4 13h4.5l1.5 2.5h4l1.5-2.5H20" />
-    <path d="M6.5 5h11L20 13v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-5z" />
+    <path d="M13 4H6a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-6" />
+    <path d="M8.5 9h4M8.5 13h3" />
+    <path d="m14 14 .6-2.6L20 6a1.4 1.4 0 0 1 2 2l-5.4 5.4z" />
   </Svg>
 )
 

@@ -144,13 +144,13 @@ describe('Project, label, completed and search views', () => {
     await user.click(within(dialog).getByRole('button', { name: 'Xóa dự án' }))
     await user.click(within(dialog).getByRole('button', { name: 'Xóa' }))
 
-    expect(await screen.findByRole('heading', { level: 1, name: 'Hộp thư đến' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { level: 1, name: 'Ghi nhanh' })).toBeInTheDocument()
     expect(api.state.projects).toHaveLength(1)
   })
 
   it('shows the Inbox empty state', async () => {
     renderApp('/inbox')
-    expect(await screen.findByText('Hộp thư đến trống')).toBeInTheDocument()
+    expect(await screen.findByText('Chưa có ghi chú nào')).toBeInTheDocument()
   })
 
   it('shows tasks with a label', async () => {

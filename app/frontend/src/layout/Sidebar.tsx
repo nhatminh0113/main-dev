@@ -3,10 +3,10 @@ import { useLabels, useProjects, useTasks } from '../api/hooks'
 import {
   CheckCircleIcon,
   ColorDot,
-  InboxIcon,
   KeyboardIcon,
   LogoMark,
   PlusIcon,
+  QuickNoteIcon,
   SearchIcon,
   TagIcon,
   TodayIcon,
@@ -20,10 +20,19 @@ import { useUI } from './ui'
 const linkClass = ({ isActive }: { isActive: boolean }) =>
   `${styles.link} ${isActive ? styles.active : ''}`
 
-function Count({ value, label }: { value: number | undefined; label: string }) {
+/** Badge with the number of open tasks; red when something is overdue. */
+function Count({
+  value,
+  label = 'việc chưa xong',
+  urgent = false,
+}: {
+  value: number | undefined
+  label?: string
+  urgent?: boolean
+}) {
   if (!value) return null
   return (
-    <span className={styles.count}>
+    <span className={`${styles.count} ${urgent ? styles.urgent : ''}`}>
       <span className="visually-hidden"> </span>
       {value}
       <span className="visually-hidden"> {label}</span>
@@ -37,6 +46,7 @@ export function Sidebar() {
   const { data: projects = [] } = useProjects()
   const { data: labels = [] } = useLabels()
   const { data: todayTasks } = useTasks({ done: false, due_to: today })
+  const overdue = todayTasks?.filter((t) => t.due_date! < today).length ?? 0
   const inbox = projects.find((p) => p.is_inbox)
   const others = projects.filter((p) => !p.is_inbox)
 
@@ -69,16 +79,20 @@ export function Sidebar() {
         </li>
         <li>
           <NavLink to="/inbox" className={linkClass}>
-            <InboxIcon size={18} />
-            <span className={styles.text}>Hộp thư đến</span>
-            <Count value={inbox?.open_count} label="việc" />
+            <QuickNoteIcon size={18} />
+            <span className={styles.text}>Ghi nhanh</span>
+            <Count value={inbox?.open_count} />
           </NavLink>
         </li>
         <li>
           <NavLink to="/today" className={linkClass}>
             <TodayIcon size={18} day={Number(today.slice(8))} />
             <span className={styles.text}>Hôm nay</span>
-            <Count value={todayTasks?.length} label="việc" />
+            <Count
+              value={todayTasks?.length}
+              urgent={overdue > 0}
+              label={overdue ? `việc chưa xong, ${overdue} quá hạn` : 'việc chưa xong'}
+            />
           </NavLink>
         </li>
         <li>
@@ -104,7 +118,7 @@ export function Sidebar() {
                 <ColorDot color={COLOR_HEX[p.color]} />
               </span>
               <span className={styles.text}>{p.name}</span>
-              <Count value={p.open_count} label="việc" />
+              <Count value={p.open_count} />
             </NavLink>
           </li>
         ))}
@@ -118,7 +132,7 @@ export function Sidebar() {
             <NavLink to={`/label/${l.id}`} className={linkClass}>
               <TagIcon size={18} style={{ color: COLOR_HEX[l.color] }} />
               <span className={styles.text}>{l.name}</span>
-              <Count value={l.open_count} label="việc" />
+              <Count value={l.open_count} />
             </NavLink>
           </li>
         ))}

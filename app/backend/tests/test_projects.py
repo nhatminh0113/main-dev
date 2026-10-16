@@ -12,7 +12,7 @@ def test_inbox_exists_by_default(client: TestClient) -> None:
     assert len(projects) == 1
     inbox = projects[0]
     assert inbox["is_inbox"] is True
-    assert inbox["name"] == "Hộp thư đến"
+    assert inbox["name"] == "Ghi nhanh"
     assert inbox["open_count"] == 0
     assert set(inbox) == {"id", "name", "color", "is_inbox", "position", "created_at", "open_count"}
 
@@ -34,7 +34,7 @@ def test_projects_are_listed_inbox_first_then_by_position(client: TestClient) ->
 
     names = [p["name"] for p in client.get("/api/projects").json()]
 
-    assert names == ["Hộp thư đến", "B", "A"]
+    assert names == ["Ghi nhanh", "B", "A"]
 
 
 def test_open_count_counts_only_open_tasks(client: TestClient) -> None:

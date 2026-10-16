@@ -4,7 +4,7 @@ import styles from './ShortcutsDialog.module.css'
 const SHORTCUTS: Array<[string[], string]> = [
   [['q'], 'Thêm nhanh công việc'],
   [['/'], 'Tìm kiếm'],
-  [['g', 'i'], 'Đi tới Hộp thư đến'],
+  [['g', 'i'], 'Đi tới Ghi nhanh'],
   [['g', 't'], 'Đi tới Hôm nay'],
   [['g', 'u'], 'Đi tới Sắp tới'],
   [['?'], 'Mở bảng phím tắt'],

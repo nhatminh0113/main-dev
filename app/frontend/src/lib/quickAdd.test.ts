@@ -5,7 +5,7 @@ import { parseQuickAdd, type ParseContext } from './quickAdd'
 const ctx: ParseContext = {
   today: '2026-10-16',
   projects: [
-    { id: 1, name: 'Hộp thư đến' },
+    { id: 1, name: 'Ghi nhanh' },
     { id: 2, name: 'Đồ án DevOps' },
     { id: 3, name: 'Cá nhân' },
   ],

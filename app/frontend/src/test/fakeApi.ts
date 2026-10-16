@@ -33,7 +33,7 @@ export function createFakeApi(): FakeApi {
     projects: [
       {
         id: 1,
-        name: 'Hộp thư đến',
+        name: 'Ghi nhanh',
         color: 'grey',
         is_inbox: true,
         position: 0,

@@ -25,7 +25,7 @@ LABEL_NAME_MAX = 60
 TITLE_MAX_LENGTH = 500
 DESCRIPTION_MAX_LENGTH = 5000
 DEFAULT_PRIORITY = 4  # Todoist convention: 1 = highest (P1), 4 = normal
-INBOX_NAME = "Hộp thư đến"
+INBOX_NAME = "Ghi nhanh"  # the default "inbox" project (renamed in migration 0003)
 
 
 def _created_at() -> Mapped[datetime]:

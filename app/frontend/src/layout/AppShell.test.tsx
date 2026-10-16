@@ -17,11 +17,13 @@ describe('AppShell and Sidebar', () => {
     renderApp('/today', api)
 
     const nav = screen.getByRole('navigation', { name: 'Điều hướng chính' })
-    expect(await within(nav).findByRole('link', { name: /Hộp thư đến\s*2\s*việc/ })).toBeInTheDocument()
-    expect(await within(nav).findByRole('link', { name: /Hôm nay\s*2\s*việc/ })).toHaveAttribute(
-      'aria-current',
-      'page',
-    )
+    expect(await within(nav).findByRole('link', { name: /Ghi nhanh\s*2\s*việc/ })).toBeInTheDocument()
+    const todayLink = await within(nav).findByRole('link', {
+      name: /Hôm nay\s*2\s*việc chưa xong, 1 quá hạn/,
+    })
+    expect(todayLink).toHaveAttribute('aria-current', 'page')
+    // Overdue work turns the Today badge red
+    expect(within(todayLink).getByText('2').closest('span')?.className).toMatch(/urgent/)
     expect(within(nav).getByRole('link', { name: /Đồ án DevOps\s*1\s*việc/ })).toHaveAttribute(
       'href',
       `/project/${project.id}`,
@@ -35,9 +37,9 @@ describe('AppShell and Sidebar', () => {
     await user.click(screen.getByRole('link', { name: /Sắp tới/ }))
     expect(await screen.findByRole('heading', { level: 1, name: 'Sắp tới' })).toBeInTheDocument()
 
-    await user.click(screen.getByRole('link', { name: /Hộp thư đến/ }))
-    expect(await screen.findByRole('heading', { level: 1, name: 'Hộp thư đến' })).toBeInTheDocument()
-    expect(document.title).toBe('Hộp thư đến · Taskapp')
+    await user.click(screen.getByRole('link', { name: /Ghi nhanh/ }))
+    expect(await screen.findByRole('heading', { level: 1, name: 'Ghi nhanh' })).toBeInTheDocument()
+    expect(document.title).toBe('Ghi nhanh · Taskapp')
   })
 
   it('redirects / to Today and shows a not-found page for unknown routes', async () => {

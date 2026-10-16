@@ -57,7 +57,7 @@ function ProjectView({ project }: { project: Project }) {
         <TaskSection tasks={open} addDefaults={{ projectId: project.id }} />
         {open.length === 0 &&
           (project.is_inbox ? (
-            <EmptyState art="inbox" title="Hộp thư đến trống">
+            <EmptyState art="inbox" title="Chưa có ghi chú nào">
               Ghi nhanh mọi việc vào đây, sắp xếp sau. Nhấn <kbd>q</kbd> ở bất kỳ đâu để thêm.
             </EmptyState>
           ) : (

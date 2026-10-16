@@ -99,14 +99,31 @@
   white-space: nowrap;
 }
 
+/* Open-task badge: a filled pill so pending work stands out at a glance. */
 .count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 20px;
+  padding: 0 7px;
   font-size: var(--font-size-xs);
-  font-weight: 400;
-  color: var(--color-text-subtle);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-accent-text);
+  background: var(--color-accent-soft);
+  border-radius: var(--radius-full);
 }
 
 .active .count {
-  color: var(--color-accent-text);
+  color: var(--color-on-accent);
+  background: var(--color-accent);
+}
+
+/* Today with overdue tasks */
+.count.urgent {
+  color: #ffffff;
+  background: var(--color-p1);
 }
 
 .dotWrap {
