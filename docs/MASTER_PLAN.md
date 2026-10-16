@@ -225,6 +225,27 @@ Quy ước:
 
 ---
 
+### Task 3B: Mở rộng app theo hướng Todoist
+
+**Skill:** `postgresql`
+
+**Mục tiêu:** app đủ chỉn chu để demo: dự án, nhãn, ưu tiên, ngày hết hạn, view Hôm nay/Sắp tới, thêm nhanh bằng ngôn ngữ tự nhiên.
+
+**Hướng dẫn:** chi tiết trong [`docs/app-feature-plan.md`](app-feature-plan.md) (phân tích, thiết kế, mô hình dữ liệu, API) và mockup [`docs/design/mockup-today.svg`](design/mockup-today.svg). Làm theo 5 bước, mỗi bước một commit:
+
+- B1. Backend: migration 0002, API projects/labels/tasks mở rộng, lọc, smart sort, subtask.
+- B2. Nền frontend: react-router, react-query, tokens + CSS Modules, AppShell, Sidebar responsive, chế độ tối.
+- B3. Các view danh sách, hoàn thành lạc quan + Hoàn tác.
+- B4. Thêm nhanh (parser ngôn ngữ tự nhiên), hộp thoại chi tiết, picker, subtask.
+- B5. Phím tắt, trạng thái trống, skeleton, rà soát accessibility.
+
+**Tiêu chí hoàn thành:**
+- [x] B1: pytest pass, coverage ≥ 80%, `alembic upgrade head` và `downgrade base` chạy được, `POST /api/tasks {"title"}` vẫn tương thích.
+- [ ] B2–B5: `npm run lint`, `npm test -- --run`, `npm run build` pass. Parser có ≥ 40 test case.
+- [ ] Chạy với backend thật: dùng được mọi view trên desktop và mobile, sáng và tối, chỉ bằng bàn phím.
+
+---
+
 ### Task 4: Docker hóa và Docker Compose
 
 **Skill:** `docker-management`, `docker-compose`, `container-hardening`
@@ -289,6 +310,7 @@ Quy ước:
   - Secret DB: dùng `existingSecret` (secret tạo từ pipeline), chart không chứa mật khẩu.
   - `serviceMonitor.enabled` (mặc định `false`, bật ở Task 12).
   - `networkPolicy.enabled` (mặc định `false`, bật ở Task 13).
+  - `basicAuth.enabled` + `basicAuth.existingSecret`: Traefik `Middleware` (`traefik.io/v1alpha1`, `basicAuth`) gắn vào Ingress qua annotation `traefik.ingress.kubernetes.io/router.middlewares`. Secret (htpasswd) do pipeline tạo, chart không chứa mật khẩu. Xem Task 3B, quyết định đăng nhập.
 - `values.yaml` mặc định, cùng `values-staging.yaml` và `values-prod.yaml` (khác nhau ở host, replicas, resources, issuer).
 - Bổ sung vào CI: `helm lint`, `helm template ... | kubeconform -strict -ignore-missing-schemas` cho cả 2 file values.
 
@@ -506,6 +528,7 @@ Quy ước:
 - [x] Task 1: Khởi tạo repo và môi trường WSL2
 - [x] Task 2: Backend FastAPI (TDD)
 - [x] Task 3: Frontend React
+- [ ] Task 3B: Mở rộng app theo hướng Todoist
 - [ ] Task 4: Docker hóa và Docker Compose
 - [ ] Task 5: Pipeline CI
 - [ ] Task 6: Helm chart ứng dụng
@@ -539,6 +562,9 @@ Ghi theo mẫu: `YYYY-MM-DD | Task N | Quyết định / phiên bản đã pin /
 | 2026-10-16 | 3 | Pin frontend (exact, có `package-lock.json`): react/react-dom 19.3.1, vite 8.3.4, @vitejs/plugin-react 6.1.2, typescript 6.0.3, vitest 5.0.5, jsdom 30.1.3, @testing-library/react 16.3.3, eslint 10.12.0, typescript-eslint 8.71.2, eslint-plugin-react-hooks 7.1.1 | Bản mới nhất tương thích nhau. TypeScript 7 chưa được typescript-eslint hỗ trợ (`<6.1.0`) |
 | 2026-10-16 | 3 | Dùng `eslint-plugin-jsx-a11y-x` 0.2.0 (fork của es-tooling) thay `eslint-plugin-jsx-a11y` | Bản gốc chưa hỗ trợ ESLint 10 và không cập nhật từ 2024. ESLint 9 đã hết hỗ trợ |
 | 2026-10-16 | 3 | Giao diện: CSS thuần + design tokens (CSS variables), không dùng UI framework. Tự động sáng/tối, tương phản AA, viền focus rõ | Ít dependency, image nhẹ, ít lỗ hổng cho Trivy. Trọng tâm đồ án là DevOps |
+| 2026-10-16 | 3B | Thêm Task 3B (mở rộng app theo Todoist) theo yêu cầu người dùng. Phạm vi P0, thêm `react-router` + `@tanstack/react-query`, màu nhấn indigo | Người dùng muốn app chỉn chu hơn để demo. Plan chi tiết: `docs/app-feature-plan.md` |
+| 2026-10-16 | 3B | Đăng nhập bằng Basic Auth ở Ingress (Traefik Middleware), không làm đăng nhập trong app | App public trên Internet, cần chặn người lạ sửa dữ liệu. Cách này gần như không đụng code app và hợp với đồ án DevOps. Bổ sung vào Task 6 |
+| 2026-10-16 | 3B | B1: migration 0002 bật extension `unaccent` (tìm kiếm không dấu). Giới hạn tiêu đề tăng từ 200 lên 500 ký tự. Ngày hết hạn chỉ có ngày, không có giờ. Màu dự án/nhãn là tên trong bảng 12 màu, frontend tự quy đổi ra mã màu | `unaccent` là trusted extension, user DB thường tạo được, không cần superuser. Kiểu `date` tránh lệch múi giờ |
 
 ## 9. Skill tham khảo (`.kiro/skills/`)
 
