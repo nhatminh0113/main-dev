@@ -1,0 +1,123 @@
+/*
+ * Design tokens. Every text/background pair targets WCAG 2.2 AA (>= 4.5:1).
+ * Components consume only these variables, so light/dark themes are defined in one place.
+ */
+:root {
+  --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-size-xs: 0.75rem; /* 12px: meta */
+  --font-size-sm: 0.8125rem; /* 13px: secondary */
+  --font-size-md: 0.875rem; /* 14px: body */
+  --font-size-lg: 1rem;
+  --font-size-xl: 1.5rem; /* 24px: view title */
+
+  /* Surfaces */
+  --color-bg: #ffffff;
+  --color-sidebar: #f8f7f4;
+  --color-sidebar-border: #ebe9e4;
+  --color-surface: #ffffff;
+  --color-surface-hover: #f5f5f5;
+  --color-overlay: rgb(0 0 0 / 0.45);
+
+  /* Text */
+  --color-text: #202020;
+  --color-text-muted: #666666;
+  --color-text-subtle: #707070; /* placeholders, counters: 5.0:1 (4.6:1 on hover bg) */
+  --color-border: #e5e5e5;
+  --color-divider: #ececec;
+
+  /* Accent (indigo) */
+  --color-accent: #5b5bd6; /* white text on it: 5.4:1 */
+  --color-accent-hover: #4a4ac4;
+  --color-accent-text: #4a4ac4; /* on white or on --color-accent-soft */
+  --color-accent-soft: #ebebfa;
+  --color-on-accent: #ffffff;
+
+  /* Priorities (Todoist convention). Used for the completion ring: >= 3:1 (WCAG 1.4.11) */
+  --color-p1: #d1453b;
+  --color-p2: #d97706;
+  --color-p3: #246fe0;
+  --color-p4: #8a8a8a;
+
+  /* Due date tones (text): >= 4.5:1 on both white and the hover background */
+  --color-due-overdue: #c0392b;
+  --color-due-today: #057a24;
+  --color-due-tomorrow: #9a5700;
+  --color-due-soon: #692fc2;
+  --color-due-later: #666666;
+
+  /* Feedback */
+  --color-danger: #c0392b;
+  --color-danger-soft: #fdecea;
+  --color-success: #299438;
+  --color-toast-bg: #242424;
+  --color-toast-text: #ffffff;
+  --color-toast-action: #b4b4f5;
+
+  --color-focus: #4a4ac4;
+
+  /* Shape & spacing (4px scale) */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-full: 999px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --shadow-popover: 0 2px 8px rgb(0 0 0 / 0.08), 0 8px 28px rgb(0 0 0 / 0.12);
+  --shadow-dialog: 0 12px 48px rgb(0 0 0 / 0.2);
+
+  /* Layout */
+  --sidebar-width: 272px;
+  --content-max: 800px;
+
+  /* Motion */
+  --duration-fast: 120ms;
+  --duration-base: 200ms;
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-bg: #1e1e1e;
+    --color-sidebar: #262626;
+    --color-sidebar-border: #333333;
+    --color-surface: #282828;
+    --color-surface-hover: #303030;
+    --color-overlay: rgb(0 0 0 / 0.6);
+
+    --color-text: #f2f2f2;
+    --color-text-muted: #b3b3b3;
+    --color-text-subtle: #9e9e9e;
+    --color-border: #3d3d3d;
+    --color-divider: #333333;
+
+    --color-accent: #5b5bd6;
+    --color-accent-hover: #6c6ce0;
+    --color-accent-text: #a5a5f2;
+    --color-accent-soft: #2f2f52;
+
+    --color-p1: #ff7066;
+    --color-p2: #ff9a14;
+    --color-p3: #5297ff;
+    --color-p4: #8a8a8a;
+
+    --color-due-overdue: #ff7b6e;
+    --color-due-today: #4ac264;
+    --color-due-tomorrow: #f5a623;
+    --color-due-soon: #b98cf5;
+    --color-due-later: #b3b3b3;
+
+    --color-danger: #ff7b6e;
+    --color-danger-soft: #3d2220;
+    --color-toast-bg: #f2f2f2;
+    --color-toast-text: #1e1e1e;
+    --color-toast-action: #4a4ac4;
+
+    --color-focus: #a5a5f2;
+    --shadow-popover: 0 2px 8px rgb(0 0 0 / 0.4), 0 8px 28px rgb(0 0 0 / 0.5);
+  }
+}

@@ -21,9 +21,20 @@ export default defineConfig([
       ecmaVersion: 2022,
       globals: globals.browser,
     },
+    rules: {
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        { argsIgnorePattern: '^_', varsIgnorePattern: '^_', ignoreRestSiblings: true },
+      ],
+    },
   },
   {
     files: ['vite.config.ts'],
     languageOptions: { globals: globals.node },
+  },
+  {
+    // Test doubles parse arbitrary JSON bodies.
+    files: ['src/test/**', '**/*.test.{ts,tsx}'],
+    rules: { '@typescript-eslint/no-explicit-any': 'off' },
   },
 ])
