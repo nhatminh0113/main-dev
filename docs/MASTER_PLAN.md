@@ -317,7 +317,7 @@ Quy ước:
 **Test:** CI pass. Có thể thêm `helm-unittest` để kiểm tra Ingress host và image tag (tùy chọn).
 
 **Tiêu chí hoàn thành:**
-- [ ] `helm lint` và kubeconform pass trong CI với cả staging và prod values.
+- [x] `helm lint` và kubeconform pass trong CI với cả staging và prod values.
 
 ---
 
@@ -531,7 +531,7 @@ Quy ước:
 - [x] Task 3B: Mở rộng app theo hướng Todoist
 - [x] Task 4: Docker hóa và Docker Compose
 - [x] Task 5: Pipeline CI
-- [ ] Task 6: Helm chart ứng dụng
+- [x] Task 6: Helm chart ứng dụng
 - [ ] Task 7: Mua VPS + Ansible baseline
 - [ ] Task 8: Ansible role k3s
 - [ ] Task 9: Terraform nền tảng
@@ -579,6 +579,15 @@ Ghi theo mẫu: `YYYY-MM-DD | Task N | Quyết định / phiên bản đã pin /
 | 2026-10-16 | 5 | Job `image`: build bằng `load: true` → Trivy quét → `docker push` đúng image vừa quét, không build lại. Login/push chỉ chạy khi event là `push`. Thêm Trivy 0.76.0 và actionlint 1.7.12 vào `setup-wsl-tools.sh` | Image lên GHCR chính là image đã qua quét. Quét và lint workflow được ngay trên máy trước khi push |
 | 2026-10-16 | 5 | Kiểm chứng: PR #1 đỏ ở bước pytest (lỗi cố ý ở `/api/healthz`), revert thì xanh. Trên PR, job image chỉ build + quét, không push. 2 package GHCR đã public, pull ẩn danh trả HTTP 200 | Tiêu chí Task 5 |
 | 2026-10-16 | 5 | Giữ `runs-on: ubuntu-latest` theo plan. GitHub thông báo `ubuntu-latest` chuyển sang Ubuntu 26 từ 19/10/2026. Nếu CI lỗi sau ngày đó thì đổi sang `ubuntu-24.04` | Ghi nhận rủi ro, chưa đổi vì plan chỉ định `ubuntu-latest` |
+| 2026-10-16 | 6 | Migration chạy trong entrypoint backend, khóa bằng `pg_advisory_xact_lock` trong `alembic/env.py` (thay cho Helm hook/Job). Có test chạy 3 tiến trình `alembic upgrade` song song: không khóa thì fail 3/3 lần | Prod có 2 replica khởi động cùng lúc. Hook `pre-upgrade` không chạy được ở lần cài đầu vì Secret và Postgres chưa có |
+| 2026-10-16 | 6 | Mọi workload chạy theo Pod Security "restricted": non-root (backend 10001, frontend 101, postgres 70), `readOnlyRootFilesystem`, drop ALL, seccomp `RuntimeDefault`, `automountServiceAccountToken: false`. Postgres read-only đã thử bằng Docker với cùng ràng buộc | Chặt hơn mức `baseline` mà Task 9 sẽ áp cho namespace |
+| 2026-10-16 | 6 | Backend có `startupProbe` (tối đa ~2,5 phút cho migration), liveness `/api/healthz`, readiness `/api/readyz`. Rolling update `maxUnavailable: 0`. `/metrics` không đi qua Ingress | Không có downtime khi deploy, metrics chỉ scrape nội bộ |
+| 2026-10-16 | 6 | Chart từ chối render khi thiếu `image.tag`, khi `image.tag=latest` hoặc khi thiếu `ingress.host`. `DATABASE_URL` ghép từ Secret qua `$(DB_PASSWORD)`, nên mật khẩu DB phải URL-safe (hex) | Tránh deploy nhầm tag trôi. Chart không chứa mật khẩu |
+| 2026-10-16 | 6 | Staging dùng `letsencrypt-prod` (khác gợi ý "issuer" trong plan) và Basic Auth bật cho cả hai môi trường. NetworkPolicy có thêm rule cho pod giải ACME HTTP-01 | Smoke test trong pipeline cần chứng chỉ hợp lệ. Không có rule ACME thì cert-manager không gia hạn được khi bật NetworkPolicy (Task 13) |
+| 2026-10-16 | 6 | `scripts/helm-check.sh`: `helm lint --strict` + kubeconform (k8s 1.36.5, `-strict`, CRD Traefik/Prometheus lấy từ datreeio/CRDs-catalog pin commit `63669a5`) cho staging/prod, cả khi bật ServiceMonitor + NetworkPolicy, kèm kiểm tra các điều kiện chặn. Dùng schema CRD thay cho `-ignore-missing-schemas` | Kiểm tra được cả Middleware và ServiceMonitor, không bỏ qua resource nào |
+| 2026-10-17 | Báo cáo | Bắt đầu viết báo cáo đồ án theo `docs/bao cao/PLAN_BAO_CAO.md` (Mở đầu, Chương 1, Chương 2 trước, Chương 3 sau Task 14). Không dùng bản nháp cũ ở `D:\ĐỒ ÁN II\BaoCao\` | Người dùng yêu cầu, bản nháp cũ mô tả hệ thống khác (GCP, Argo CD) |
+| 2026-10-17 | Báo cáo | Cài skill `humanizer-vi` từ `longhang2004/vietnamese-humanizer` commit `576c80fb445a8b2e9ec1993a6490ab6529b89d12` (MIT, kèm `LICENSE`), gồm thêm catalog `patterns/humanizer.yml` và `patterns/translationese.yml`. Không cài script, linter hay web app của repo | Rà văn phong tiếng Việt ở bước rà soát báo cáo |
+| 2026-10-17 | Báo cáo | `.gitignore` loại trừ `docs/bao cao/signed_*` | Bài mẫu của người khác có chữ ký, họ tên, MSSV, repo đang public |
 
 ## 9. Skill tham khảo (`.kiro/skills/`)
 
@@ -597,6 +606,7 @@ Các skill được lấy từ [BagelHole/DevOps-Security-Agent-Skills](https://
 | `ssl-tls-management` | 9 |
 | `prometheus-grafana` | 12 |
 | `runbook-creation` | 11, 14 |
+| `humanizer-vi` | Báo cáo đồ án. Nguồn: [longhang2004/vietnamese-humanizer](https://github.com/longhang2004/vietnamese-humanizer) commit `576c80f`, MIT, xem `.kiro/skills/humanizer-vi/LICENSE` |
 
 Quy tắc khi dùng skill:
 - Skill là tài liệu tham khảo chung. **Khi mâu thuẫn với plan này thì plan thắng.** Ví dụ: skill có thể gợi ý Bitnami, cloud LB, `latest` tag, hoặc `curl | sh`. Dự án này không dùng những cách đó.
