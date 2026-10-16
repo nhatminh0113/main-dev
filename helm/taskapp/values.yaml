@@ -1,0 +1,73 @@
+# Default values. Environment overrides: values-staging.yaml, values-prod.yaml.
+# Required at install time:  --set image.tag=sha-xxxxxxx  --set ingress.host=<host>
+# The chart never contains passwords: secrets are created by the pipeline (see NOTES.txt).
+
+image:
+  registry: ghcr.io
+  owner: nhatminh0113
+  # Immutable tag built by CI, e.g. sha-affc581. Required; "latest" is rejected.
+  tag: ""
+  pullPolicy: IfNotPresent
+
+backend:
+  replicas: 1
+  # Run `alembic upgrade head` in the container entrypoint (serialised with an advisory lock).
+  runMigrations: true
+  resources:
+    requests: { cpu: 50m, memory: 96Mi }
+    limits: { cpu: 500m, memory: 256Mi }
+
+frontend:
+  replicas: 1
+  resources:
+    requests: { cpu: 10m, memory: 16Mi }
+    limits: { cpu: 200m, memory: 64Mi }
+
+postgres:
+  image:
+    repository: postgres
+    tag: 18.6-alpine
+  username: taskapp
+  database: taskapp
+  storage:
+    storageClassName: local-path
+    size: 1Gi
+  resources:
+    requests: { cpu: 50m, memory: 128Mi }
+    limits: { cpu: 500m, memory: 512Mi }
+
+# Secret with the database password, created outside the chart:
+#   kubectl create secret generic taskapp-db --from-literal=password=<url-safe password>
+database:
+  existingSecret: taskapp-db
+  passwordKey: password
+
+ingress:
+  enabled: true
+  className: traefik
+  # Public hostname, e.g. staging.<IP>.sslip.io. Required when ingress is enabled.
+  host: ""
+  tls:
+    enabled: true
+    # cert-manager ClusterIssuer (created by Terraform in Task 9)
+    clusterIssuer: letsencrypt-prod
+
+# HTTP Basic Auth in front of the whole site (Traefik Middleware).
+# Secret with an htpasswd line under the key "users", created outside the chart:
+#   kubectl create secret generic taskapp-basic-auth --from-literal=users="$(htpasswd -nbB user pass)"
+basicAuth:
+  enabled: false
+  existingSecret: taskapp-basic-auth
+
+# Prometheus Operator ServiceMonitor for the backend /metrics (Task 12).
+serviceMonitor:
+  enabled: false
+  interval: 30s
+  labels: {}
+
+# NetworkPolicies: default-deny ingress, only the expected flows allowed (Task 13).
+networkPolicy:
+  enabled: false
+  # Where Traefik (k3s default) and Prometheus run
+  ingressControllerNamespace: kube-system
+  monitoringNamespace: monitoring

@@ -1,7 +1,7 @@
 from logging.config import fileConfig
 
 from alembic import context
-from sqlalchemy import engine_from_config, pool
+from sqlalchemy import engine_from_config, pool, text
 
 import app.models  # noqa: F401  (registers models on Base.metadata)
 from app.config import get_settings
@@ -15,6 +15,9 @@ if config.config_file_name is not None:
 config.set_main_option("sqlalchemy.url", get_settings().database_url.replace("%", "%%"))
 
 target_metadata = Base.metadata
+
+# Arbitrary, app-specific key for pg_advisory_xact_lock ("taskapp" in hex-ish digits).
+MIGRATION_LOCK = 7_461_736_861_70
 
 
 def run_migrations_offline() -> None:
@@ -37,6 +40,10 @@ def run_migrations_online() -> None:
     with connectable.connect() as connection:
         context.configure(connection=connection, target_metadata=target_metadata)
         with context.begin_transaction():
+            # Several backend replicas run migrations at start-up: serialise them with a
+            # transaction-scoped advisory lock. The next replica waits, then finds the schema
+            # already at head and does nothing.
+            connection.execute(text("SELECT pg_advisory_xact_lock(:key)"), {"key": MIGRATION_LOCK})
             context.run_migrations()
 
 

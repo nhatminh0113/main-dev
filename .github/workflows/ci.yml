@@ -2,6 +2,7 @@
 #
 # - backend:  ruff (lint + format) and pytest against a real PostgreSQL service container
 # - frontend: eslint, vitest, production build
+# - helm:     helm lint + kubeconform for the staging and prod values
 # - image:    build both Docker images, scan them with Trivy, push to GHCR (push events only)
 #
 # Security notes (public repository):
@@ -108,9 +109,42 @@ jobs:
       - name: Build
         run: npm run build
 
+  helm:
+    name: Helm chart (lint + kubeconform)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      HELM_VERSION: v4.3.1
+      KUBECONFORM_VERSION: v0.8.0
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+
+      # Official release binaries, verified against their published SHA-256 checksums.
+      - name: Install helm and kubeconform
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/bin" && cd "$RUNNER_TEMP"
+          curl -fsSLO "https://get.helm.sh/helm-${HELM_VERSION}-linux-amd64.tar.gz"
+          curl -fsSLO "https://get.helm.sh/helm-${HELM_VERSION}-linux-amd64.tar.gz.sha256sum"
+          sha256sum -c "helm-${HELM_VERSION}-linux-amd64.tar.gz.sha256sum"
+          tar -xzf "helm-${HELM_VERSION}-linux-amd64.tar.gz" linux-amd64/helm
+          install -m 0755 linux-amd64/helm bin/helm
+          base="https://github.com/yannh/kubeconform/releases/download/${KUBECONFORM_VERSION}"
+          curl -fsSLO "${base}/kubeconform-linux-amd64.tar.gz"
+          curl -fsSL -o kubeconform.sums "${base}/CHECKSUMS"
+          grep ' kubeconform-linux-amd64.tar.gz$' kubeconform.sums | sha256sum -c -
+          tar -xzf kubeconform-linux-amd64.tar.gz kubeconform
+          install -m 0755 kubeconform bin/kubeconform
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+
+      - name: Lint and validate (staging + prod values)
+        run: bash scripts/helm-check.sh
+
   image:
     name: Image ${{ matrix.component }} (build + Trivy${{ github.event_name == 'push' && ' + push' || '' }})
-    needs: [backend, frontend]
+    needs: [backend, frontend, helm]
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
