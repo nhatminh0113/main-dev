@@ -199,3 +199,24 @@ Mỗi bước kết thúc bằng lint + test pass và một commit trên `develo
 | Đăng nhập | (b) **Basic Auth ở Ingress** bằng Traefik `Middleware` (`basicAuth`), thông tin đăng nhập nằm trong Secret do pipeline tạo. Thực hiện ở Task 6 (chart) và Task 10/11 (secret). Endpoint `/api/healthz` cho smoke test vẫn cần đi qua auth, nên smoke test sẽ gửi kèm thông tin đăng nhập |
 | Thư viện mới | `react-router`, `@tanstack/react-query` |
 | Màu nhấn | Indigo `#5b5bd6` như mockup |
+
+## 10. Bổ sung: Lịch tuần dạng thời khóa biểu (chờ duyệt)
+
+Mockup: [`docs/design/mockup-week.svg`](design/mockup-week.svg)
+
+**Bố cục:** view mới `/week` ("Lịch tuần" trên sidebar). 7 cột Thứ Hai → Chủ Nhật, hàng "Cả ngày" cho việc chỉ có ngày, bên dưới là các khung giờ (mặc định 07:00–22:00, cuộn được). Cột hôm nay được tô nền, có đường đỏ báo giờ hiện tại. Nút ‹ › để chuyển tuần, "Tuần này" để quay về.
+
+**Khối công việc:** màu nền theo dự án, vòng tròn theo mức ưu tiên, cao theo thời lượng. Bấm vào khối để mở chi tiết, tick ngay trên khối để hoàn thành. Bấm vào ô trống để thêm việc vào đúng ngày giờ đó.
+
+**Thay đổi cần có:**
+
+| Phần | Nội dung |
+|---|---|
+| Backend | Migration 0004: thêm `due_time` (kiểu `time`, có thể null) và `duration_minutes` (15–720, mặc định 60). Smart sort xếp thêm theo giờ. Thêm giờ thì bắt buộc phải có ngày |
+| Thêm nhanh | Nhận diện giờ: `9h`, `9h30`, `14:30`, `lúc 9h`, `9am`, `2pm`. Thời lượng: `trong 2 tiếng`, `trong 90 phút`, `for 2h` |
+| Picker ngày | Thêm ô chọn giờ và thời lượng |
+| Dòng công việc | Hiện giờ cạnh ngày, ví dụ "Hôm nay 09:00" |
+| Mobile | Mặc định hiện 1 ngày, vuốt hoặc bấm ‹ › để đổi ngày. Có nút chuyển sang 3 ngày |
+| Accessibility | Mỗi khối là một nút có tên đầy đủ ("Viết Helm chart, Thứ Sáu 09:00 đến 11:00"). Lưới có `role="grid"`, dùng phím mũi tên để đi giữa các ô. Màn Sắp tới vẫn là dạng danh sách thay thế |
+
+**Ngoài phạm vi (P1):** kéo thả khối để đổi giờ, kéo cạnh dưới để đổi thời lượng, việc lặp lại hằng tuần.
