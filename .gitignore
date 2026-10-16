@@ -1,0 +1,82 @@
+# ---------- OS / editor ----------
+.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
+*~
+.vscode/*
+!.vscode/extensions.json
+.idea/
+
+# ---------- Python ----------
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+
+# ---------- Node ----------
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.vite/
+coverage/
+
+# ---------- Environment / secrets ----------
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+id_ed25519*
+id_rsa*
+
+# ---------- Terraform ----------
+.terraform/
+.terraform.lock.hcl.bak
+*.tfstate
+*.tfstate.*
+*.tfplan
+tfplan
+crash.log
+crash.*.log
+terraform.tfvars
+*.auto.tfvars
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.tflint.d/
+
+# ---------- Kubernetes ----------
+*.kubeconfig
+config-vps
+kubeconfig-deployer*
+
+# ---------- Ansible ----------
+# Real inventory contains the VPS IP: commit hosts.example.yml only
+infra/ansible/inventory/hosts.yml
+*.retry
+.vault_pass
+.vault_pass.txt
+vault_pass*
+# Decrypted vault files (keep only the encrypted vault.yml in git)
+*.decrypted.yml
+*.dec.yml
+vault.plain.yml
+
+# ---------- Helm ----------
+helm/**/charts/*.tgz
+infra/terraform/charts/**/charts/*.tgz
