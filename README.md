@@ -48,6 +48,17 @@ alembic upgrade head
 uvicorn app.main:app --reload
 ```
 
+## Chạy frontend local (trong WSL)
+
+```bash
+cd app/frontend
+npm ci
+npm run lint
+npm test -- --run
+npm run build
+npm run dev        # http://localhost:5173, /api được proxy tới http://localhost:8000
+```
+
 ## Nhánh
 
 - `develop`: tích hợp, tự động deploy lên staging.

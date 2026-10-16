@@ -220,8 +220,8 @@ Quy ước:
 **Test:** Vitest + React Testing Library cho component danh sách và form, mock `fetch`.
 
 **Tiêu chí hoàn thành:**
-- [ ] `npm run lint`, `npm test -- --run`, `npm run build` đều pass.
-- [ ] `npm run dev` hoạt động với backend local.
+- [x] `npm run lint`, `npm test -- --run`, `npm run build` đều pass.
+- [x] `npm run dev` hoạt động với backend local.
 
 ---
 
@@ -505,7 +505,7 @@ Quy ước:
 
 - [x] Task 1: Khởi tạo repo và môi trường WSL2
 - [x] Task 2: Backend FastAPI (TDD)
-- [ ] Task 3: Frontend React
+- [x] Task 3: Frontend React
 - [ ] Task 4: Docker hóa và Docker Compose
 - [ ] Task 5: Pipeline CI
 - [ ] Task 6: Helm chart ứng dụng
@@ -536,6 +536,9 @@ Ghi theo mẫu: `YYYY-MM-DD | Task N | Quyết định / phiên bản đã pin /
 | 2026-10-16 | 2 | Thêm `GET /api/tasks/{id}` ngoài 4 endpoint trong plan | Smoke test (Task 4) cần "đọc lại" đúng task vừa tạo |
 | 2026-10-16 | 2 | Dùng `httpx2` thay `httpx` cho TestClient | Starlette 1.8 báo `httpx` deprecated cho `starlette.testclient` |
 | 2026-10-16 | 2 | `/metrics` không đo chính nó và `/api/healthz`, `/api/readyz`. `/metrics` không có trong OpenAPI. `DATABASE_URL` dạng `postgresql://` được tự đổi sang driver psycopg | Probe của Kubernetes không làm nhiễu biểu đồ request rate. Secret DB có thể dùng URL chuẩn |
+| 2026-10-16 | 3 | Pin frontend (exact, có `package-lock.json`): react/react-dom 19.3.1, vite 8.3.4, @vitejs/plugin-react 6.1.2, typescript 6.0.3, vitest 5.0.5, jsdom 30.1.3, @testing-library/react 16.3.3, eslint 10.12.0, typescript-eslint 8.71.2, eslint-plugin-react-hooks 7.1.1 | Bản mới nhất tương thích nhau. TypeScript 7 chưa được typescript-eslint hỗ trợ (`<6.1.0`) |
+| 2026-10-16 | 3 | Dùng `eslint-plugin-jsx-a11y-x` 0.2.0 (fork của es-tooling) thay `eslint-plugin-jsx-a11y` | Bản gốc chưa hỗ trợ ESLint 10 và không cập nhật từ 2024. ESLint 9 đã hết hỗ trợ |
+| 2026-10-16 | 3 | Giao diện: CSS thuần + design tokens (CSS variables), không dùng UI framework. Tự động sáng/tối, tương phản AA, viền focus rõ | Ít dependency, image nhẹ, ít lỗ hổng cho Trivy. Trọng tâm đồ án là DevOps |
 
 ## 9. Skill tham khảo (`.kiro/skills/`)
 
