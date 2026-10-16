@@ -575,6 +575,8 @@ Ghi theo mẫu: `YYYY-MM-DD | Task N | Quyết định / phiên bản đã pin /
 | 2026-10-16 | 4 | Entrypoint backend chạy `alembic upgrade head` (tắt được bằng `RUN_MIGRATIONS=false`). nginx thêm security header + CSP, cache lâu cho `/assets/`, `no-cache` cho `index.html`. Địa chỉ upstream `/api` lấy từ biến `API_UPSTREAM` | Để Task 6 chọn được cách chạy migration (trong entrypoint hoặc Helm hook) mà không phải sửa image |
 | 2026-10-16 | 4 | `smoke-test.sh` kiểm tra thêm `/api/readyz` và SPA fallback (`/week`). Hỗ trợ `SMOKE_AUTH=user:pass` cho Basic Auth ở Ingress | Pipeline CD (Task 10/11) phải đi qua Basic Auth |
 | 2026-10-16 | 4 | Kết quả: image backend 324 MB, frontend 91 MB. Container frontend read-only cần tmpfs `/etc/nginx/conf.d` thuộc UID 101 (nginx) để entrypoint render template | Lần chạy đầu frontend bị unhealthy: tmpfs mặc định thuộc root nên config không được tạo, nginx không listen 8080 |
+| 2026-10-16 | 5 | Pin action: `actions/checkout@v7.0.1`, `actions/setup-python@v7.0.0`, `actions/setup-node@v7.1.0`, `docker/setup-buildx-action@v4.4.1`, `docker/build-push-action@v7.4.0`, `docker/login-action@v4.6.0`. Bên thứ ba: `aquasecurity/trivy-action@ed142fd0…` (v0.36.0, pin SHA) với Trivy `v0.76.0` | Bản mới nhất. Action chính thức pin tag cụ thể, bên thứ ba pin SHA theo plan |
+| 2026-10-16 | 5 | Job `image`: build bằng `load: true` → Trivy quét → `docker push` đúng image vừa quét, không build lại. Login/push chỉ chạy khi event là `push`. Thêm Trivy 0.76.0 và actionlint 1.7.12 vào `setup-wsl-tools.sh` | Image lên GHCR chính là image đã qua quét. Quét và lint workflow được ngay trên máy trước khi push |
 
 ## 9. Skill tham khảo (`.kiro/skills/`)
 
