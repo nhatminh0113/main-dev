@@ -17,7 +17,7 @@ router = APIRouter(prefix="/api", tags=["health"])
 @router.get("/healthz", response_model=HealthStatus)
 def healthz() -> HealthStatus:
     """Liveness probe: the process is up. Never touches the database."""
-    return HealthStatus(status="ok")
+    return HealthStatus(status="OK")  # deliberate bug: CI must turn red
 
 
 @router.get(
