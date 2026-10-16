@@ -4,6 +4,9 @@ import type { Label, Priority, Project } from '../api/types'
 export interface QuickAddDefaults {
   projectId?: number
   dueDate?: string
+  /** "HH:MM" */
+  dueTime?: string
+  duration?: number
   priority?: Priority
   labelIds?: number[]
   parentId?: number

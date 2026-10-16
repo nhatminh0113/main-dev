@@ -46,8 +46,12 @@ export interface Task {
   title: string
   description: string
   priority: Priority
-  /** ISO date `YYYY-MM-DD` (no time). */
+  /** ISO date `YYYY-MM-DD`. */
   due_date: string | null
+  /** Local start time `HH:MM:SS` (requires due_date). */
+  due_time: string | null
+  /** Minutes, 15–720 (requires due_time). null = default length. */
+  duration_minutes: number | null
   done: boolean
   completed_at: string | null
   position: number
@@ -63,13 +67,26 @@ export interface TaskCreate {
   description?: string
   priority?: Priority
   due_date?: string | null
+  due_time?: string | null
+  duration_minutes?: number | null
   project_id?: number
   parent_id?: number
   label_ids?: number[]
 }
 
 export type TaskUpdate = Partial<
-  Pick<Task, 'title' | 'description' | 'priority' | 'due_date' | 'done' | 'project_id' | 'position'>
+  Pick<
+    Task,
+    | 'title'
+    | 'description'
+    | 'priority'
+    | 'due_date'
+    | 'due_time'
+    | 'duration_minutes'
+    | 'done'
+    | 'project_id'
+    | 'position'
+  >
 > & { label_ids?: number[] }
 
 export interface TaskQuery {

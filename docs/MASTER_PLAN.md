@@ -567,6 +567,8 @@ Ghi theo mẫu: `YYYY-MM-DD | Task N | Quyết định / phiên bản đã pin /
 | 2026-10-16 | 3B | B1: migration 0002 bật extension `unaccent` (tìm kiếm không dấu). Giới hạn tiêu đề tăng từ 200 lên 500 ký tự. Ngày hết hạn chỉ có ngày, không có giờ. Màu dự án/nhãn là tên trong bảng 12 màu, frontend tự quy đổi ra mã màu | `unaccent` là trusted extension, user DB thường tạo được, không cần superuser. Kiểu `date` tránh lệch múi giờ |
 | 2026-10-16 | 3B | Pin `react-router` 8.4.0 (declarative mode), `@tanstack/react-query` 5.104.3. B2–B5 gộp vào 1 commit (thay vì 4) | Các bước phụ thuộc chặt vào nhau (AppShell cần QuickAdd/TaskDialog), tách commit sẽ có commit không build được |
 | 2026-10-16 | 3B | Chỉnh màu so với plan để đạt tương phản trên nền hover `#f5f5f5`: P2 `#d97706`, P4 `#8a8a8a` (vòng ≥ 3:1), ngày hôm nay `#057a24`, ngày mai `#9a5700`, chữ phụ `#707070` (≥ 4.5:1) | Màu ban đầu chỉ đạt chuẩn trên nền trắng |
+| 2026-10-16 | 3B | Đổi "Hộp thư đến" thành "Ghi nhanh" (migration 0003). Số việc trên sidebar thành huy hiệu, Hôm nay chuyển đỏ khi có việc quá hạn | Theo yêu cầu người dùng |
+| 2026-10-16 | 3B | Thêm Lịch tuần dạng thời khóa biểu (`/week`). Migration 0004 thêm `due_time` và `duration_minutes` (15–720 phút). Giờ bắt buộc có ngày, thời lượng bắt buộc có giờ. Xóa ngày thì giờ tự bị xóa. Thêm nhanh hiểu được "9h", "3h chiều", "lúc 14:30", "trong 2 tiếng" | Người dùng chọn phương án A. Chi tiết ở mục 10 của `docs/app-feature-plan.md` |
 
 ## 9. Skill tham khảo (`.kiro/skills/`)
 

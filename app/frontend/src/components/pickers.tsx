@@ -5,7 +5,8 @@ import { COLOR_HEX } from '../lib/colors'
 import { addDays, describeDue, nextWeekday, weekday } from '../lib/dates'
 import { fold } from '../lib/text'
 import { useToday } from '../lib/useToday'
-import { CalendarIcon, CheckIcon, ColorDot, FlagIcon, PlusIcon, TagIcon } from './icons'
+import { DEFAULT_DURATION, DURATION_OPTIONS, formatDuration, hhmm } from '../lib/time'
+import { CalendarIcon, CheckIcon, ClockIcon, ColorDot, FlagIcon, PlusIcon, TagIcon } from './icons'
 import { PRIORITY_LABEL, priorityColor } from '../lib/priority'
 import { Popover } from './Popover'
 import styles from './pickers.module.css'
@@ -84,6 +85,88 @@ export function DuePicker({ value, onChange, iconOnly = false }: DuePickerProps)
                 }
               }}
             />
+          </div>
+        </div>
+      )}
+    </Popover>
+  )
+}
+
+// ---------- Time & duration ----------
+
+export interface TimeValue {
+  /** "HH:MM" or null */
+  time: string | null
+  duration: number | null
+}
+
+export function TimePicker({ value, onChange }: { value: TimeValue; onChange: (v: TimeValue) => void }) {
+  const timeId = useId()
+  const durationId = useId()
+  const label = value.time
+    ? `${hhmm(value.time)} · ${formatDuration(value.duration ?? DEFAULT_DURATION)}`
+    : null
+
+  return (
+    <Popover
+      label="Chọn giờ"
+      trigger={(props) => (
+        <button
+          type="button"
+          {...props}
+          className={`${styles.chip} ${value.time ? styles.soon : ''}`}
+          aria-label={`Giờ: ${label ?? 'chưa có'}`}
+        >
+          <ClockIcon size={16} />
+          <span>{label ?? 'Giờ'}</span>
+        </button>
+      )}
+    >
+      {(close) => (
+        <div className={styles.menu}>
+          <div className={styles.timeFields}>
+            <label htmlFor={timeId}>Giờ bắt đầu</label>
+            <input
+              id={timeId}
+              type="time"
+              className="input"
+              step={300}
+              value={value.time ? hhmm(value.time) : ''}
+              onChange={(e) =>
+                onChange({ time: e.target.value || null, duration: e.target.value ? value.duration : null })
+              }
+            />
+            <label htmlFor={durationId}>Thời lượng</label>
+            <select
+              id={durationId}
+              className="input"
+              value={value.duration ?? DEFAULT_DURATION}
+              disabled={!value.time}
+              onChange={(e) => onChange({ ...value, duration: Number(e.target.value) })}
+            >
+              {DURATION_OPTIONS.map((m) => (
+                <option key={m} value={m}>
+                  {formatDuration(m)}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className={styles.menuFooter}>
+            {value.time && (
+              <button
+                type="button"
+                className="btn btn-ghost"
+                onClick={() => {
+                  onChange({ time: null, duration: null })
+                  close()
+                }}
+              >
+                Bỏ giờ
+              </button>
+            )}
+            <button type="button" className="btn btn-primary" onClick={close}>
+              Xong
+            </button>
           </div>
         </div>
       )}

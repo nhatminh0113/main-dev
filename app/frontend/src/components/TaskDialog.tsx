@@ -6,7 +6,9 @@ import { useUI } from '../layout/ui'
 import { COLOR_HEX } from '../lib/colors'
 import { Dialog } from './Dialog'
 import { CheckIcon, ColorDot, PlusIcon, TrashIcon } from './icons'
-import { DuePicker, LabelPicker, PriorityPicker, ProjectSelect } from './pickers'
+import { DEFAULT_DURATION } from '../lib/time'
+import { useToday } from '../lib/useToday'
+import { DuePicker, LabelPicker, PriorityPicker, ProjectSelect, TimePicker } from './pickers'
 import { QuickAdd } from './QuickAdd'
 import { TaskSkeleton } from './Skeleton'
 import styles from './TaskDialog.module.css'
@@ -34,6 +36,7 @@ export function TaskDialog({ taskId, onClose }: { taskId: number | null; onClose
 }
 
 function TaskDetail({ task, onClose }: { task: Task; onClose: () => void }) {
+  const today = useToday()
   const { change, toggle } = useTaskActions()
   const { openTask } = useUI()
   const toast = useToast()
@@ -178,6 +181,20 @@ function TaskDetail({ task, onClose }: { task: Task; onClose: () => void }) {
         <div className={styles.field}>
           <span className={styles.fieldLabel}>Ngày hết hạn</span>
           <DuePicker value={task.due_date} onChange={(d) => change(task, { due_date: d })} />
+        </div>
+        <div className={styles.field}>
+          <span className={styles.fieldLabel}>Giờ</span>
+          <TimePicker
+            value={{ time: task.due_time, duration: task.duration_minutes }}
+            onChange={(v) =>
+              change(task, {
+                due_time: v.time,
+                duration_minutes: v.time ? (v.duration ?? DEFAULT_DURATION) : null,
+                // A time needs a date: default to today.
+                ...(v.time && !task.due_date ? { due_date: today } : {}),
+              })
+            }
+          />
         </div>
         <div className={styles.field}>
           <span className={styles.fieldLabel}>Mức ưu tiên</span>

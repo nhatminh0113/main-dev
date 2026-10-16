@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import date, datetime, time
 
 from sqlalchemy import (
     Boolean,
@@ -13,6 +13,7 @@ from sqlalchemy import (
     String,
     Table,
     Text,
+    Time,
     func,
     text,
 )
@@ -24,6 +25,8 @@ PROJECT_NAME_MAX = 120
 LABEL_NAME_MAX = 60
 TITLE_MAX_LENGTH = 500
 DESCRIPTION_MAX_LENGTH = 5000
+DURATION_MIN = 15
+DURATION_MAX = 720  # 12 hours
 DEFAULT_PRIORITY = 4  # Todoist convention: 1 = highest (P1), 4 = normal
 INBOX_NAME = "Ghi nhanh"  # the default "inbox" project (renamed in migration 0003)
 
@@ -73,6 +76,14 @@ class Task(Base):
             f"char_length(title) BETWEEN 1 AND {TITLE_MAX_LENGTH}", name="ck_tasks_title_length"
         ),
         CheckConstraint("priority BETWEEN 1 AND 4", name="ck_tasks_priority"),
+        CheckConstraint(
+            "due_time IS NULL OR due_date IS NOT NULL", name="ck_tasks_time_needs_date"
+        ),
+        CheckConstraint(
+            "duration_minutes IS NULL OR (due_time IS NOT NULL AND "
+            f"duration_minutes BETWEEN {DURATION_MIN} AND {DURATION_MAX})",
+            name="ck_tasks_duration",
+        ),
         Index("ix_tasks_open_due_date", "due_date", postgresql_where=text("NOT done")),
     )
 
@@ -89,6 +100,9 @@ class Task(Base):
         SmallInteger, nullable=False, server_default=str(DEFAULT_PRIORITY)
     )
     due_date: Mapped[date | None] = mapped_column(Date)
+    # Optional start time (local wall-clock, no timezone) and length, for the week timetable.
+    due_time: Mapped[time | None] = mapped_column(Time)
+    duration_minutes: Mapped[int | None] = mapped_column(SmallInteger)
     done: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     position: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")

@@ -11,7 +11,7 @@ import type { Priority } from '../api/types'
 import { addDays, makeDate, nextWeekday, parseISODate, toISODate, weekday } from './dates'
 import { nameKey } from './text'
 
-export type TokenType = 'date' | 'priority' | 'project' | 'label'
+export type TokenType = 'date' | 'time' | 'duration' | 'priority' | 'project' | 'label'
 
 export interface QuickAddToken {
   type: TokenType
@@ -31,6 +31,10 @@ export interface ParsedLabel {
 export interface ParsedQuickAdd {
   title: string
   dueDate: string | null
+  /** "HH:MM" */
+  dueTime: string | null
+  /** minutes */
+  duration: number | null
   priority: Priority | null
   projectId: number | null
   labels: ParsedLabel[]
@@ -42,6 +46,10 @@ export interface ParseContext {
   projects: ReadonlyArray<{ id: number; name: string }>
   labels: ReadonlyArray<{ id: number; name: string }>
   ignore?: ReadonlySet<string>
+  /** Current time "HH:MM": a time typed without a date that has already passed means tomorrow. */
+  now?: string
+  /** Date implied by where the editor was opened (e.g. a day column); used for a bare time. */
+  defaultDate?: string
 }
 
 type DateResolver = (today: string) => string
@@ -105,6 +113,65 @@ function parseNumericDate(word: string, today: string): string | null {
 
 const lower = (s: string) => s.normalize('NFC').toLocaleLowerCase('vi')
 
+// ---------- time of day: "9h", "9h30", "14:30", "9am", "2:30pm" (+ "lúc", "sáng/chiều/tối") ----------
+
+const TIME_PREFIX = new Set(['lúc', 'luc', 'at'])
+
+/** Period words that follow a time. Unaccented "toi"/"sang" are skipped ("tôi", "sang"). */
+const PERIOD: Record<string, (h: number) => number> = {
+  sáng: (h) => (h === 12 ? 0 : h),
+  trưa: (h) => (h < 11 ? h + 12 : h),
+  chiều: (h) => (h < 12 ? h + 12 : h),
+  chieu: (h) => (h < 12 ? h + 12 : h),
+  tối: (h) => (h < 12 ? h + 12 : h),
+}
+
+function parseTime(word: string): [number, number] | null {
+  let match = /^(\d{1,2})h(\d{2})?$/.exec(word) ?? /^(\d{1,2}):(\d{2})$/.exec(word)
+  if (match) return valid(Number(match[1]), Number(match[2] ?? 0))
+  match = /^(\d{1,2})(?::(\d{2}))?(am|pm)$/.exec(word)
+  if (match) {
+    const h = Number(match[1])
+    if (h < 1 || h > 12) return null
+    return valid((h % 12) + (match[3] === 'pm' ? 12 : 0), Number(match[2] ?? 0))
+  }
+  return null
+}
+
+const valid = (h: number, m: number): [number, number] | null =>
+  h <= 23 && m <= 59 ? [h, m] : null
+
+const fmt = ([h, m]: [number, number]) => `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+
+// ---------- duration: "trong 2 tiếng", "trong 90p", "trong 1h30", "for 2h", "for 30 minutes" ----------
+
+const DURATION_PREFIX = new Set(['trong', 'for'])
+const HOUR_UNITS = new Set(['h', 'giờ', 'gio', 'tiếng', 'tieng', 'hour', 'hours', 'hr', 'hrs'])
+const MINUTE_UNITS = new Set(['p', 'ph', 'phút', 'phut', 'm', 'min', 'mins', 'minute', 'minutes'])
+const DURATION_RANGE = [15, 720] as const
+
+function unitMinutes(amount: number, unit: string): number | null {
+  if (HOUR_UNITS.has(unit)) return amount * 60
+  if (MINUTE_UNITS.has(unit)) return amount
+  return null
+}
+
+/** One word ("2h", "90p", "1h30") or two words ("2 tiếng"). */
+function parseDuration(first: string, second: string | undefined): [number, number] | null {
+  const combined = /^(\d+)h(\d{1,2})$/.exec(first)
+  if (combined) return [Number(combined[1]) * 60 + Number(combined[2]), 1]
+  const single = /^(\d+)([a-zà-ỹ]+)$/u.exec(first)
+  if (single) {
+    const minutes = unitMinutes(Number(single[1]), single[2])
+    return minutes === null ? null : [minutes, 1]
+  }
+  if (/^\d+$/.test(first) && second) {
+    const minutes = unitMinutes(Number(first), second)
+    return minutes === null ? null : [minutes, 2]
+  }
+  return null
+}
+
 export function parseQuickAdd(input: string, ctx: ParseContext): ParsedQuickAdd {
   const words = [...input.matchAll(/\S+/g)].map((m) => ({
     text: m[0],
@@ -118,6 +185,8 @@ export function parseQuickAdd(input: string, ctx: ParseContext): ParsedQuickAdd 
   const result: ParsedQuickAdd = {
     title: '',
     dueDate: null,
+    dueTime: null,
+    duration: null,
     priority: null,
     projectId: null,
     labels: [],
@@ -157,6 +226,36 @@ export function parseQuickAdd(input: string, ctx: ParseContext): ParsedQuickAdd 
       if (matched) continue
     }
 
+    const lw = lower(word)
+    if (result.duration === null && DURATION_PREFIX.has(lw) && i + 1 < words.length) {
+      const parsed = parseDuration(lower(words[i + 1].text), words[i + 2] && lower(words[i + 2].text))
+      if (parsed) {
+        const [minutes, used] = parsed
+        const inRange = minutes >= DURATION_RANGE[0] && minutes <= DURATION_RANGE[1]
+        if (inRange && take('duration', i, i + 1 + used)) {
+          result.duration = minutes
+          continue
+        }
+      }
+    }
+
+    if (result.dueTime === null) {
+      const start = TIME_PREFIX.has(lw) && i + 1 < words.length ? i + 1 : i
+      let time = parseTime(lower(words[start].text))
+      if (time) {
+        let end = start + 1
+        const period = words[end] && PERIOD[lower(words[end].text)]
+        if (period) {
+          time = valid(period(time[0]), time[1])
+          end++
+        }
+        if (time && take('time', i, end)) {
+          result.dueTime = fmt(time)
+          continue
+        }
+      }
+    }
+
     const priority = /^p([1-4])$/i.exec(word)
     if (priority && result.priority === null) {
       if (take('priority', i, i + 1)) result.priority = Number(priority[1]) as Priority
@@ -181,6 +280,13 @@ export function parseQuickAdd(input: string, ctx: ParseContext): ParsedQuickAdd 
       const duplicate = result.labels.some((l) => lower(l.name) === lower(resolved.name))
       if (take('label', i, i + 1) && !duplicate) result.labels.push(resolved)
     }
+  }
+
+  // A time without a date: the editor's default date, else today
+  // (or tomorrow if that time has already passed).
+  if (result.dueTime && !result.dueDate) {
+    const passed = ctx.now !== undefined && result.dueTime < ctx.now
+    result.dueDate = ctx.defaultDate ?? (passed ? addDays(ctx.today, 1) : ctx.today)
   }
 
   result.title = words

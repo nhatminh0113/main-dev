@@ -177,3 +177,71 @@ describe('parseQuickAdd: priority, project, labels', () => {
     expect(parse('  Viết   test   mai  ').title).toBe('Viết test')
   })
 })
+
+describe('parseQuickAdd: time and duration', () => {
+  it.each([
+    // [input, due date, time, title]
+    ['Họp nhóm mai 9h', '2026-10-17', '09:00', 'Họp nhóm'],
+    ['Họp nhóm mai 9h30', '2026-10-17', '09:30', 'Họp nhóm'],
+    ['Họp nhóm mai lúc 14:30', '2026-10-17', '14:30', 'Họp nhóm'],
+    ['Họp nhóm mai luc 7h', '2026-10-17', '07:00', 'Họp nhóm'],
+    ['Call team tomorrow at 9am', '2026-10-17', '09:00', 'Call team'],
+    ['Call team tomorrow 2pm', '2026-10-17', '14:00', 'Call team'],
+    ['Call team tomorrow 12am', '2026-10-17', '00:00', 'Call team'],
+    ['Đá bóng thứ 7 3h chiều', '2026-10-17', '15:00', 'Đá bóng'],
+    ['Ăn tối 7h tối mai', '2026-10-17', '19:00', 'Ăn tối'],
+    ['Họp 1h trưa thứ 2', '2026-10-19', '13:00', 'Họp'],
+    ['Chạy bộ 6h sáng mai', '2026-10-17', '06:00', 'Chạy bộ'],
+    ['Nộp bài 23:59', '2026-10-16', '23:59', 'Nộp bài'], // time only -> today
+    ['Tập gym 7h', '2026-10-17', '07:00', 'Tập gym'], // already past now (09:15) -> tomorrow
+  ])('%s', (input, due, time, title) => {
+    const result = parse(input, { now: '09:15' })
+    expect(result.dueDate).toBe(due)
+    expect(result.dueTime).toBe(time)
+    expect(result.title).toBe(title)
+  })
+
+  it.each([
+    ['Ôn thi mai 8h trong 2 tiếng', 120],
+    ['Ôn thi mai 8h trong 90 phút', 90],
+    ['Ôn thi mai 8h trong 1h30', 90],
+    ['Ôn thi mai 8h trong 45p', 45],
+    ['Study tomorrow 8am for 2h', 120],
+    ['Study tomorrow 8am for 30 minutes', 30],
+  ])('%s -> %i minutes', (input, minutes) => {
+    const result = parse(input)
+    expect(result.duration).toBe(minutes)
+    expect(result.dueTime).toBe('08:00')
+    expect(result.title).toBe(input.startsWith('Study') ? 'Study' : 'Ôn thi')
+  })
+
+  it.each([
+    'Đọc trong nhà', // "trong" without an amount
+    'Gift for mom',
+    'Phòng 25h', // invalid hour
+    'Lúc nào cũng được', // "lúc" without a time
+    'Chạy 9h99',
+  ])('finds no time or duration in "%s"', (input) => {
+    const result = parse(input)
+    expect(result.dueTime).toBeNull()
+    expect(result.duration).toBeNull()
+    expect(result.title).toBe(input)
+  })
+
+  it('uses the editor default date for a bare time, but an explicit date wins', () => {
+    expect(parse('Ôn tập 14h', { defaultDate: '2026-10-14' }).dueDate).toBe('2026-10-14')
+    expect(parse('Ôn tập mai 14h', { defaultDate: '2026-10-14' }).dueDate).toBe('2026-10-17')
+  })
+
+  it('ignores durations outside 15 minutes – 12 hours', () => {
+    expect(parse('Nghỉ mai 9h trong 5 phút').duration).toBeNull()
+    expect(parse('Nghỉ mai 9h trong 13 tiếng').duration).toBeNull()
+  })
+
+  it('reports the time token including "lúc" and the period word', () => {
+    const input = 'Họp lúc 3h chiều mai'
+    const result = parse(input)
+    const token = result.tokens.find((t) => t.type === 'time')!
+    expect(input.slice(token.start, token.end)).toBe('lúc 3h chiều')
+  })
+})

@@ -83,6 +83,12 @@
   background: var(--color-accent-soft);
 }
 
+.time,
+.duration {
+  color: var(--color-due-tomorrow);
+  background: color-mix(in srgb, var(--color-due-tomorrow) 14%, transparent);
+}
+
 .label {
   color: var(--color-due-soon);
   background: color-mix(in srgb, var(--color-due-soon) 12%, transparent);

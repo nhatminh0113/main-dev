@@ -4,6 +4,7 @@ import { useUI } from '../layout/ui'
 import { COLOR_HEX } from '../lib/colors'
 import { describeDue } from '../lib/dates'
 import { PRIORITY_LABEL } from '../lib/priority'
+import { hhmm } from '../lib/time'
 import { useToday } from '../lib/useToday'
 import { CalendarIcon, CheckIcon, ColorDot, PencilIcon, SubtaskIcon } from './icons'
 import { DuePicker } from './pickers'
@@ -55,6 +56,7 @@ export function TaskItem({ task, showProject = false, hideDue = false }: TaskIte
                 <span>
                   <span className="visually-hidden">Hạn: </span>
                   {due.label}
+                  {task.due_time && ` ${hhmm(task.due_time)}`}
                 </span>
               </span>
             )}

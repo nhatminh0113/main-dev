@@ -99,6 +99,8 @@ export function createFakeApi(): FakeApi {
       description: '',
       priority: 4,
       due_date: null,
+      due_time: null,
+      duration_minutes: null,
       done: false,
       completed_at: null,
       position: state.tasks.length + 1,
@@ -135,6 +137,7 @@ export function createFakeApi(): FakeApi {
       params.get('done') === 'true'
         ? (b.completed_at ?? '').localeCompare(a.completed_at ?? '')
         : (a.due_date ?? '9999').localeCompare(b.due_date ?? '9999') ||
+          (a.due_time ?? '99').localeCompare(b.due_time ?? '99') ||
           a.priority - b.priority ||
           a.position - b.position,
     )
@@ -186,6 +189,8 @@ export function createFakeApi(): FakeApi {
         description: body.description ?? '',
         priority: (body.priority ?? 4) as Priority,
         due_date: body.due_date ?? null,
+        due_time: body.due_time ? `${body.due_time}:00`.slice(0, 8) : null,
+        duration_minutes: body.duration_minutes ?? null,
         project_id: parent?.project_id ?? body.project_id ?? 1,
         parent_id: body.parent_id ?? null,
         labels: labelBriefs(body.label_ids ?? []),
@@ -199,7 +204,11 @@ export function createFakeApi(): FakeApi {
       if (method === 'GET') return json(withSubtaskCounts(task))
       if (method === 'PATCH') {
         const { label_ids, ...fields } = body
+        if (typeof fields.due_time === 'string') fields.due_time = `${fields.due_time}:00`.slice(0, 8)
         Object.assign(task, fields)
+        // Same consistency rules as the real API
+        if (task.due_date === null) task.due_time = null
+        if (task.due_time === null) task.duration_minutes = null
         if (label_ids) task.labels = labelBriefs(label_ids)
         if ('done' in fields) task.completed_at = fields.done ? '2026-10-16T10:00:00Z' : null
         return json(withSubtaskCounts(task))

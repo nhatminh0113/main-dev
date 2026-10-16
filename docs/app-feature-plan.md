@@ -200,7 +200,7 @@ Mỗi bước kết thúc bằng lint + test pass và một commit trên `develo
 | Thư viện mới | `react-router`, `@tanstack/react-query` |
 | Màu nhấn | Indigo `#5b5bd6` như mockup |
 
-## 10. Bổ sung: Lịch tuần dạng thời khóa biểu (chờ duyệt)
+## 10. Bổ sung: Lịch tuần dạng thời khóa biểu (đã duyệt phương án A, đã làm)
 
 Mockup: [`docs/design/mockup-week.svg`](design/mockup-week.svg)
 
@@ -217,6 +217,7 @@ Mockup: [`docs/design/mockup-week.svg`](design/mockup-week.svg)
 | Picker ngày | Thêm ô chọn giờ và thời lượng |
 | Dòng công việc | Hiện giờ cạnh ngày, ví dụ "Hôm nay 09:00" |
 | Mobile | Mặc định hiện 1 ngày, vuốt hoặc bấm ‹ › để đổi ngày. Có nút chuyển sang 3 ngày |
-| Accessibility | Mỗi khối là một nút có tên đầy đủ ("Viết Helm chart, Thứ Sáu 09:00 đến 11:00"). Lưới có `role="grid"`, dùng phím mũi tên để đi giữa các ô. Màn Sắp tới vẫn là dạng danh sách thay thế |
+| Accessibility | Mỗi khối là một nút có tên đầy đủ ("Viết Helm chart, Thứ Sáu 09:00 – 11:00, Đồ án DevOps"), dùng Tab để đi qua. Ô giờ trống chỉ là lối tắt cho chuột. Người dùng bàn phím thêm việc qua nút "+" ở đầu mỗi cột ngày, gõ giờ trong thêm nhanh (ví dụ "14h"). Màn Sắp tới vẫn là dạng danh sách thay thế. *(Đã thay cho ý tưởng `role="grid"` với phím mũi tên, vì 168 ô trống không mang lại thêm thông tin cho trình đọc màn hình)* |
+| Việc trùng giờ | Xếp so le như Google Calendar: mỗi việc bắt đầu ở cột của nó nhưng rộng hơn phần chia (×1,7), việc sau đè lên trên. Khối hẹp hoặc thấp tự rút gọn nội dung (CSS container queries) |
 
 **Ngoài phạm vi (P1):** kéo thả khối để đổi giờ, kéo cạnh dưới để đổi thời lượng, việc lặp lại hằng tuần.

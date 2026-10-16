@@ -11,6 +11,7 @@ import {
   TagIcon,
   TodayIcon,
   UpcomingIcon,
+  WeekIcon,
 } from '../components/icons'
 import { COLOR_HEX } from '../lib/colors'
 import { useToday } from '../lib/useToday'
@@ -99,6 +100,12 @@ export function Sidebar() {
           <NavLink to="/upcoming" className={linkClass}>
             <UpcomingIcon size={18} />
             <span className={styles.text}>Sắp tới</span>
+          </NavLink>
+        </li>
+        <li>
+          <NavLink to="/week" className={linkClass}>
+            <WeekIcon size={18} />
+            <span className={styles.text}>Lịch tuần</span>
           </NavLink>
         </li>
         <li>

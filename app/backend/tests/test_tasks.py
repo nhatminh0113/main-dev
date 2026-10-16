@@ -13,6 +13,8 @@ TASK_FIELDS = {
     "description",
     "priority",
     "due_date",
+    "due_time",
+    "duration_minutes",
     "done",
     "completed_at",
     "position",

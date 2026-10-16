@@ -79,6 +79,8 @@ def _to_read(task: Task, counts: dict[int, tuple[int, int]]) -> TaskRead:
         description=task.description,
         priority=task.priority,
         due_date=task.due_date,
+        due_time=task.due_time,
+        duration_minutes=task.duration_minutes,
         done=task.done,
         completed_at=task.completed_at,
         position=task.position,
@@ -92,6 +94,22 @@ def _to_read(task: Task, counts: dict[int, tuple[int, int]]) -> TaskRead:
 
 def _read_one(db: Session, task: Task) -> TaskRead:
     return _to_read(task, _subtask_counts(db, [task.id]))
+
+
+def _normalize_schedule(task: Task, changes: dict) -> None:
+    """Keep date / time / duration consistent after a partial update.
+
+    Clearing a field silently clears what depends on it (no date -> no time -> no duration);
+    explicitly setting a dependent field without its prerequisite is a client error.
+    """
+    if task.due_date is None:
+        if changes.get("due_time") is not None:
+            raise _unprocessable("due_time requires due_date")
+        task.due_time = None
+    if task.due_time is None:
+        if changes.get("duration_minutes") is not None:
+            raise _unprocessable("duration_minutes requires due_time")
+        task.duration_minutes = None
 
 
 def _escape_like(value: str) -> str:
@@ -148,9 +166,11 @@ def list_tasks(
     if done is True:
         order = (Task.completed_at.desc().nulls_last(), Task.id.desc())
     else:
-        # Todoist "smart sort": due date (undated last) -> priority -> manual order -> age
+        # Todoist "smart sort": due date (undated last) -> time (untimed last)
+        # -> priority -> manual order -> age
         order = (
             Task.due_date.asc().nulls_last(),
+            Task.due_time.asc().nulls_last(),
             Task.priority,
             Task.position,
             Task.created_at,
@@ -184,6 +204,8 @@ def create_task(payload: TaskCreate, db: Session = Depends(get_db)) -> TaskRead:
         description=payload.description,
         priority=payload.priority,
         due_date=payload.due_date,
+        due_time=payload.due_time,
+        duration_minutes=payload.duration_minutes,
         project_id=project_id,
         parent_id=payload.parent_id,
         position=_next_position(db, project_id),
@@ -232,6 +254,7 @@ def update_task(task_id: int, payload: TaskUpdate, db: Session = Depends(get_db)
 
     for field, value in changes.items():
         setattr(task, field, value)
+    _normalize_schedule(task, changes)
     if label_ids is not None:
         task.labels = _resolve_labels(db, label_ids)
 

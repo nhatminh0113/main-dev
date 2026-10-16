@@ -11,6 +11,9 @@ import styles from './AppShell.module.css'
 import { Sidebar } from './Sidebar'
 import { UIContext, type QuickAddDefaults, type UIActions } from './ui'
 
+/** Views that use the full content width instead of the reading column. */
+const WIDE_ROUTES = new Set(['/week'])
+
 export function AppShell() {
   const navigate = useNavigate()
   const location = useLocation()
@@ -42,6 +45,7 @@ export function AppShell() {
     'g i': () => navigate('/inbox'),
     'g t': () => navigate('/today'),
     'g u': () => navigate('/upcoming'),
+    'g w': () => navigate('/week'),
   })
 
   return (
@@ -75,7 +79,11 @@ export function AppShell() {
               <MenuIcon />
             </button>
           </div>
-          <main id="main" className={styles.main} tabIndex={-1}>
+          <main
+            id="main"
+            className={`${styles.main} ${WIDE_ROUTES.has(location.pathname) ? styles.wide : ''}`}
+            tabIndex={-1}
+          >
             <Outlet />
           </main>
         </div>

@@ -7,6 +7,7 @@ const SHORTCUTS: Array<[string[], string]> = [
   [['g', 'i'], 'Đi tới Ghi nhanh'],
   [['g', 't'], 'Đi tới Hôm nay'],
   [['g', 'u'], 'Đi tới Sắp tới'],
+  [['g', 'w'], 'Đi tới Lịch tuần'],
   [['?'], 'Mở bảng phím tắt'],
   [['Esc'], 'Đóng hộp thoại'],
 ]

@@ -13,9 +13,10 @@ import { useUI, type QuickAddDefaults } from '../layout/ui'
 import { describeDue } from '../lib/dates'
 import { PRIORITY_LABEL } from '../lib/priority'
 import { parseQuickAdd, type QuickAddToken, type TokenType } from '../lib/quickAdd'
+import { fromMinutes } from '../lib/time'
 import { useToday } from '../lib/useToday'
 import { CloseIcon } from './icons'
-import { DuePicker, LabelPicker, PriorityPicker, ProjectSelect } from './pickers'
+import { DuePicker, LabelPicker, PriorityPicker, ProjectSelect, TimePicker, type TimeValue } from './pickers'
 import styles from './QuickAdd.module.css'
 import { useToast } from './Toast'
 
@@ -31,6 +32,8 @@ interface QuickAddProps {
 
 const TOKEN_NAMES: Record<TokenType, string> = {
   date: 'ngày',
+  time: 'giờ',
+  duration: 'thời lượng',
   priority: 'ưu tiên',
   project: 'dự án',
   label: 'nhãn',
@@ -77,11 +80,22 @@ export function QuickAdd({
   const [explicitPriority, setExplicitPriority] = useState<Priority | undefined>(undefined)
   const [explicitProject, setExplicitProject] = useState<number | undefined>(undefined)
   const [explicitLabels, setExplicitLabels] = useState<number[] | undefined>(undefined)
+  const [explicitTime, setExplicitTime] = useState<TimeValue | undefined>(undefined)
   const [error, setError] = useState<string | null>(null)
 
   const parsed = useMemo(
-    () => parseQuickAdd(text, { today, projects, labels, ignore: ignored }),
-    [text, today, projects, labels, ignored],
+    () => {
+      const now = new Date()
+      return parseQuickAdd(text, {
+        today,
+        projects,
+        labels,
+        ignore: ignored,
+        now: fromMinutes(now.getHours() * 60 + now.getMinutes()),
+        defaultDate: defaults.dueDate,
+      })
+    },
+    [text, today, projects, labels, ignored, defaults.dueDate],
   )
   const tokenOf = (type: TokenType) => parsed.tokens.find((t) => t.type === type)
 
@@ -89,6 +103,12 @@ export function QuickAdd({
   const inboxId = projects.find((p) => p.is_inbox)?.id
   const dueDate =
     explicitDue !== undefined ? explicitDue : (parsed.dueDate ?? defaults.dueDate ?? null)
+  const time = explicitTime ? explicitTime.time : (parsed.dueTime ?? defaults.dueTime ?? null)
+  const duration = explicitTime
+    ? explicitTime.duration
+    : (parsed.duration ?? defaults.duration ?? null)
+  // A time only makes sense with a date (the API enforces the same rule).
+  const dueTime = dueDate ? time : null
   const priority: Priority = explicitPriority ?? parsed.priority ?? defaults.priority ?? 4
   const projectId = explicitProject ?? parsed.projectId ?? defaults.projectId ?? inboxId
   const labelIds =
@@ -129,6 +149,7 @@ export function QuickAdd({
     setExplicitPriority(undefined)
     setExplicitProject(undefined)
     setExplicitLabels(undefined)
+    setExplicitTime(undefined)
     setError(null)
   }
 
@@ -146,6 +167,8 @@ export function QuickAdd({
         description: description.trim(),
         priority,
         due_date: dueDate,
+        due_time: dueTime,
+        duration_minutes: dueTime ? duration : null,
         ...(isSubtask ? { parent_id: defaults.parentId } : { project_id: projectId }),
         label_ids: [...labelIds, ...createdLabelIds],
       })
@@ -246,6 +269,29 @@ export function QuickAdd({
             )}
           </span>
           <span className={styles.chipGroup}>
+            <TimePicker
+              value={{ time: dueTime, duration: dueTime ? duration : null }}
+              onChange={(v) => {
+                const timeTokens = parsed.tokens.filter(
+                  (t) => t.type === 'time' || t.type === 'duration',
+                )
+                if (timeTokens.length) setText(cut(text, ...timeTokens))
+                setExplicitTime(v)
+                if (v.time && !dueDate) setExplicitDue(today)
+              }}
+            />
+            {dueTime && (
+              <ClearButton
+                label="Bỏ giờ"
+                onClick={() => {
+                  ignoreToken('time')
+                  ignoreToken('duration')
+                  setExplicitTime({ time: null, duration: null })
+                }}
+              />
+            )}
+          </span>
+          <span className={styles.chipGroup}>
             <PriorityPicker
               value={priority}
               onChange={(p) => {
@@ -310,8 +356,8 @@ export function QuickAdd({
       )}
       {showHint && (
         <p className={styles.hint}>
-          Gõ tự nhiên: “mai”, “thứ 6”, “20/10”, “p1”–“p4”, “#dự-án”, “@nhãn”. Nhấn × để bỏ phần
-          đã nhận diện.
+          Gõ tự nhiên: “mai”, “thứ 6”, “20/10”, “9h”, “3h chiều”, “trong 2 tiếng”, “p1”–“p4”,
+          “#dự-án”, “@nhãn”. Nhấn × để bỏ phần đã nhận diện.
         </p>
       )}
     </form>

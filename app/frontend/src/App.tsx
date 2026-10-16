@@ -10,6 +10,7 @@ import { InboxRoute, ProjectRoute } from './views/ProjectView'
 import { SearchView } from './views/SearchView'
 import { TodayView } from './views/TodayView'
 import { UpcomingView } from './views/UpcomingView'
+import { WeekView } from './views/WeekView'
 
 export function AppProviders({ client, children }: { client: QueryClient; children: ReactNode }) {
   return (
@@ -27,6 +28,7 @@ export function AppRoutes() {
         <Route path="inbox" element={<InboxRoute />} />
         <Route path="today" element={<TodayView />} />
         <Route path="upcoming" element={<UpcomingView />} />
+        <Route path="week" element={<WeekView />} />
         <Route path="completed" element={<CompletedView />} />
         <Route path="search" element={<SearchView />} />
         <Route path="project/:id" element={<ProjectRoute />} />

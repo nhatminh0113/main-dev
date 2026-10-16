@@ -98,6 +98,33 @@ export const FlagIcon = (p: IconProps) => (
   </Svg>
 )
 
+export const ClockIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <circle cx="12" cy="12" r="8" />
+    <path d="M12 7.5V12l3 2" />
+  </Svg>
+)
+
+/** Week timetable: calendar with columns. */
+export const WeekIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <rect x="4" y="5" width="16" height="15" rx="2.5" />
+    <path d="M4 9.5h16M9.3 9.5V20M14.7 9.5V20" />
+  </Svg>
+)
+
+export const ChevronLeftIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="m14 7-5 5 5 5" />
+  </Svg>
+)
+
+export const ChevronRightIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="m10 7 5 5-5 5" />
+  </Svg>
+)
+
 export const CalendarIcon = (p: IconProps) => (
   <Svg {...p}>
     <rect x="4" y="5" width="16" height="15" rx="2.5" />
