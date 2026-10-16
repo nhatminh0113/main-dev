@@ -1,0 +1,6 @@
+# Development / CI dependencies (pinned)
+-r requirements.txt
+pytest==9.1.1
+pytest-cov==7.1.0
+httpx2==2.13.1  # used by starlette.testclient (plain httpx is deprecated there)
+ruff==0.17.1

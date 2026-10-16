@@ -202,8 +202,8 @@ Quy ước:
 - Coverage tối thiểu 80% (`pytest --cov --cov-fail-under=80`).
 
 **Tiêu chí hoàn thành:**
-- [ ] `ruff check` và `pytest` pass.
-- [ ] Chạy `uvicorn`, mở `/docs` thao tác CRUD được.
+- [x] `ruff check` và `pytest` pass.
+- [x] Chạy `uvicorn`, mở `/docs` thao tác CRUD được. (Swagger UI nằm ở `/api/docs`, xem mục 8.)
 
 ---
 
@@ -504,7 +504,7 @@ Quy ước:
 ## 7. Tiến độ
 
 - [x] Task 1: Khởi tạo repo và môi trường WSL2
-- [ ] Task 2: Backend FastAPI (TDD)
+- [x] Task 2: Backend FastAPI (TDD)
 - [ ] Task 3: Frontend React
 - [ ] Task 4: Docker hóa và Docker Compose
 - [ ] Task 5: Pipeline CI
@@ -530,6 +530,12 @@ Ghi theo mẫu: `YYYY-MM-DD | Task N | Quyết định / phiên bản đã pin /
 | 2026-10-16 | 1 | Thêm `scripts/setup-wsl-tools.sh` (cài tool vào `~/.local/bin`, kiểm tra SHA-256, chạy lại được) và `.gitattributes` (ép LF) | Ngoài cấu trúc mục 5 nhưng giúp cài đặt lặp lại được, và tránh lỗi CRLF khi sửa file trên Windows rồi chạy trong WSL |
 | 2026-10-16 | 1 | Repo được khởi tạo tại workspace Windows (`D:\`), sau khi push lên GitHub thì clone vào `~/projects` trong WSL để làm từ Task 7 | Kiro đang mở workspace trên ổ D. Task 2–6 không bị ảnh hưởng, Ansible bắt buộc phải chạy trong filesystem WSL |
 | 2026-10-16 | 1 | Repo GitHub: `nhatminh0113/main-dev` (public), push lần đầu qua HTTPS (Git Credential Manager). SSH key tạo sau, bắt buộc có trước Task 7 | Người dùng chưa có SSH key, tiêu chí Task 1 không phụ thuộc SSH key |
+| 2026-10-16 | 2 | Pin backend: fastapi 0.143.2, uvicorn 0.54.0, sqlalchemy 2.1.4, alembic 1.20.0, psycopg[binary] 3.3.6, pydantic 2.14.1, pydantic-settings 2.16.0, prometheus-fastapi-instrumentator 8.1.0; dev: pytest 9.1.1, pytest-cov 7.1.0, httpx2 2.13.1, ruff 0.17.1 | Bản mới nhất trên PyPI, tương thích Python 3.12 |
+| 2026-10-16 | 2 | PostgreSQL dùng image `postgres:18.6-alpine` (test local, sau này dùng cho Compose/Helm) | Bản 18 mới nhất. Lưu ý: từ PG 18, image đặt dữ liệu ở `/var/lib/postgresql/18/docker`, volume phải mount vào `/var/lib/postgresql` (không phải `/var/lib/postgresql/data`) |
+| 2026-10-16 | 2 | Swagger UI ở `/api/docs`, OpenAPI ở `/api/openapi.json` (thay vì `/docs`) | Ingress chỉ chuyển `/api` tới backend, đặt dưới `/api` thì xem được docs trên staging/prod |
+| 2026-10-16 | 2 | Thêm `GET /api/tasks/{id}` ngoài 4 endpoint trong plan | Smoke test (Task 4) cần "đọc lại" đúng task vừa tạo |
+| 2026-10-16 | 2 | Dùng `httpx2` thay `httpx` cho TestClient | Starlette 1.8 báo `httpx` deprecated cho `starlette.testclient` |
+| 2026-10-16 | 2 | `/metrics` không đo chính nó và `/api/healthz`, `/api/readyz`. `/metrics` không có trong OpenAPI. `DATABASE_URL` dạng `postgresql://` được tự đổi sang driver psycopg | Probe của Kubernetes không làm nhiễu biểu đồ request rate. Secret DB có thể dùng URL chuẩn |
 
 ## 9. Skill tham khảo (`.kiro/skills/`)
 
