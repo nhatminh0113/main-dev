@@ -35,6 +35,8 @@ known-first-party = ["app"]
 testpaths = ["tests"]
 pythonpath = ["."]
 addopts = "-ra --cov=app --cov-report=term-missing --cov-fail-under=80"
+# Fail on deprecations raised from our own code so upgrades are noticed early
+filterwarnings = ["error::DeprecationWarning:app\\..*"]
 
 [tool.coverage.run]
 source = ["app"]

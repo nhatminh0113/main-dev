@@ -30,11 +30,17 @@ from app.main import app  # noqa: E402
 BACKEND_DIR = Path(__file__).resolve().parent.parent
 
 
+def alembic_config() -> Config:
+    cfg = Config(str(BACKEND_DIR / "alembic.ini"))
+    cfg.set_main_option("script_location", str(BACKEND_DIR / "alembic"))
+    return cfg
+
+
 @pytest.fixture(scope="session", autouse=True)
 def migrated_database() -> Iterator[None]:
     """Apply all Alembic migrations once per test session, roll them back at the end."""
-    cfg = Config(str(BACKEND_DIR / "alembic.ini"))
-    cfg.set_main_option("script_location", str(BACKEND_DIR / "alembic"))
+    cfg = alembic_config()
+    command.downgrade(cfg, "base")  # start from a clean schema even after an aborted run
     command.upgrade(cfg, "head")
     yield
     get_engine().dispose()
@@ -43,10 +49,11 @@ def migrated_database() -> Iterator[None]:
 
 @pytest.fixture(autouse=True)
 def clean_tables() -> Iterator[None]:
-    """Give every test an empty tasks table."""
+    """Every test starts with only the Inbox project and no tasks or labels."""
     yield
     with get_engine().begin() as conn:
-        conn.execute(text("TRUNCATE TABLE tasks RESTART IDENTITY"))
+        conn.execute(text("TRUNCATE TABLE task_labels, tasks, labels RESTART IDENTITY CASCADE"))
+        conn.execute(text("DELETE FROM projects WHERE NOT is_inbox"))
 
 
 @pytest.fixture
@@ -54,3 +61,8 @@ def client() -> Iterator[TestClient]:
     with TestClient(app) as test_client:
         yield test_client
     app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def inbox_id(client: TestClient) -> int:
+    return next(p["id"] for p in client.get("/api/projects").json() if p["is_inbox"])

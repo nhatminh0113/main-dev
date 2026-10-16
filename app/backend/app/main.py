@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from prometheus_fastapi_instrumentator import Instrumentator
 
-from app.routers import health, tasks
+from app.routers import health, labels, projects, tasks
 
 app = FastAPI(
     title="Task Manager API",
@@ -12,6 +12,8 @@ app = FastAPI(
 )
 
 app.include_router(health.router)
+app.include_router(projects.router)
+app.include_router(labels.router)
 app.include_router(tasks.router)
 
 # Prometheus metrics on /metrics (scraped in-cluster, not routed through the Ingress).
