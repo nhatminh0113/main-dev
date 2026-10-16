@@ -290,8 +290,8 @@ Quy ước:
 - **[Bạn]** Sau lần push đầu tiên, vào Packages, đặt 2 package ở chế độ Public.
 
 **Tiêu chí hoàn thành:**
-- [ ] PR cố tình làm test fail thì CI đỏ, sửa lại thì CI xanh.
-- [ ] Push lên `develop` thì 2 image xuất hiện trên GHCR với tag `sha-xxx`.
+- [x] PR cố tình làm test fail thì CI đỏ, sửa lại thì CI xanh. (PR #1, nhánh `demo/ci-red-green`)
+- [x] Push lên `develop` thì 2 image xuất hiện trên GHCR với tag `sha-xxx`. (`sha-affc581`, pull ẩn danh được)
 
 ---
 
@@ -530,7 +530,7 @@ Quy ước:
 - [x] Task 3: Frontend React
 - [x] Task 3B: Mở rộng app theo hướng Todoist
 - [x] Task 4: Docker hóa và Docker Compose
-- [ ] Task 5: Pipeline CI
+- [x] Task 5: Pipeline CI
 - [ ] Task 6: Helm chart ứng dụng
 - [ ] Task 7: Mua VPS + Ansible baseline
 - [ ] Task 8: Ansible role k3s
@@ -577,6 +577,8 @@ Ghi theo mẫu: `YYYY-MM-DD | Task N | Quyết định / phiên bản đã pin /
 | 2026-10-16 | 4 | Kết quả: image backend 324 MB, frontend 91 MB. Container frontend read-only cần tmpfs `/etc/nginx/conf.d` thuộc UID 101 (nginx) để entrypoint render template | Lần chạy đầu frontend bị unhealthy: tmpfs mặc định thuộc root nên config không được tạo, nginx không listen 8080 |
 | 2026-10-16 | 5 | Pin action: `actions/checkout@v7.0.1`, `actions/setup-python@v7.0.0`, `actions/setup-node@v7.1.0`, `docker/setup-buildx-action@v4.4.1`, `docker/build-push-action@v7.4.0`, `docker/login-action@v4.6.0`. Bên thứ ba: `aquasecurity/trivy-action@ed142fd0…` (v0.36.0, pin SHA) với Trivy `v0.76.0` | Bản mới nhất. Action chính thức pin tag cụ thể, bên thứ ba pin SHA theo plan |
 | 2026-10-16 | 5 | Job `image`: build bằng `load: true` → Trivy quét → `docker push` đúng image vừa quét, không build lại. Login/push chỉ chạy khi event là `push`. Thêm Trivy 0.76.0 và actionlint 1.7.12 vào `setup-wsl-tools.sh` | Image lên GHCR chính là image đã qua quét. Quét và lint workflow được ngay trên máy trước khi push |
+| 2026-10-16 | 5 | Kiểm chứng: PR #1 đỏ ở bước pytest (lỗi cố ý ở `/api/healthz`), revert thì xanh. Trên PR, job image chỉ build + quét, không push. 2 package GHCR đã public, pull ẩn danh trả HTTP 200 | Tiêu chí Task 5 |
+| 2026-10-16 | 5 | Giữ `runs-on: ubuntu-latest` theo plan. GitHub thông báo `ubuntu-latest` chuyển sang Ubuntu 26 từ 19/10/2026. Nếu CI lỗi sau ngày đó thì đổi sang `ubuntu-24.04` | Ghi nhận rủi ro, chưa đổi vì plan chỉ định `ubuntu-latest` |
 
 ## 9. Skill tham khảo (`.kiro/skills/`)
 
