@@ -26,6 +26,18 @@
 | `.github/workflows` | Pipeline CI/CD |
 | `docs` | Tài liệu dự án |
 
+## Chạy cả stack bằng Docker Compose
+
+```bash
+cp .env.example .env
+sed -i "s/^POSTGRES_PASSWORD=.*/POSTGRES_PASSWORD=$(openssl rand -hex 16)/" .env
+docker compose up -d --build
+docker compose ps                         # 3 service đều "healthy"
+scripts/smoke-test.sh http://localhost:8080
+```
+
+Mở http://localhost:8080 (API docs: http://localhost:8080/api/docs). Dừng: `docker compose down` (thêm `-v` để xóa cả dữ liệu).
+
 ## Chạy backend local (trong WSL)
 
 ```bash

@@ -21,6 +21,12 @@ Kế hoạch đầy đủ: #[[file:docs/MASTER_PLAN.md]]
 - Không tự chạy script trong `.kiro/skills/*/scripts/` lên VPS.
 - Mỗi task phải có test hoặc bước kiểm chứng chạy được trước khi báo hoàn thành.
 
+## Dung lượng ổ đĩa (máy dev)
+- Ổ C của người dùng gần đầy. Mọi dữ liệu phát sinh (file tạm, ảnh chụp kiểm tra, cache, image Docker, backup) phải lưu ở ổ D.
+- File tạm phía Windows để trong `D:\ĐỒ ÁN II\kiro-tmp\` (ngoài repo) và xóa sau khi dùng. Không dùng `$env:TEMP` (nằm trên ổ C).
+- Distro WSL `Ubuntu-24.04` nằm ở `D:\WSL\Ubuntu`, nên `~`, `/tmp`, venv, cache npm/pip trong WSL đã ở ổ D.
+- Dữ liệu Docker Desktop (Disk image location) phải ở ổ D. Không cài thêm gì vào ổ C.
+
 ## Ngôn ngữ
 - Tài liệu (`docs/`, README) và giao tiếp với người dùng: tiếng Việt.
 - Code, tên biến, commit message: tiếng Anh.

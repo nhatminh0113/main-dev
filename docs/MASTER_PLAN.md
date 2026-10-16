@@ -242,7 +242,7 @@ Quy ước:
 **Tiêu chí hoàn thành:**
 - [x] B1: pytest pass, coverage ≥ 80%, `alembic upgrade head` và `downgrade base` chạy được, `POST /api/tasks {"title"}` vẫn tương thích.
 - [x] B2–B5: `npm run lint`, `npm test -- --run`, `npm run build` pass. Parser có ≥ 40 test case.
-- [ ] Chạy với backend thật: dùng được mọi view trên desktop và mobile, sáng và tối, chỉ bằng bàn phím.
+- [x] Chạy với backend thật: dùng được mọi view trên desktop và mobile, sáng và tối, chỉ bằng bàn phím. (Kiểm tra bằng ảnh chụp Edge headless, test bàn phím trong Vitest. Người dùng đồng ý chuyển sang Task 4.)
 
 ---
 
@@ -265,8 +265,8 @@ Quy ước:
 - Thêm `.dockerignore` cho cả hai app.
 
 **Tiêu chí hoàn thành:**
-- [ ] `docker compose up -d --build` chạy xong, cả 3 service healthy.
-- [ ] `scripts/smoke-test.sh http://localhost:8080` pass.
+- [x] `docker compose up -d --build` chạy xong, cả 3 service healthy.
+- [x] `scripts/smoke-test.sh http://localhost:8080` pass.
 
 ---
 
@@ -528,8 +528,8 @@ Quy ước:
 - [x] Task 1: Khởi tạo repo và môi trường WSL2
 - [x] Task 2: Backend FastAPI (TDD)
 - [x] Task 3: Frontend React
-- [ ] Task 3B: Mở rộng app theo hướng Todoist
-- [ ] Task 4: Docker hóa và Docker Compose
+- [x] Task 3B: Mở rộng app theo hướng Todoist
+- [x] Task 4: Docker hóa và Docker Compose
 - [ ] Task 5: Pipeline CI
 - [ ] Task 6: Helm chart ứng dụng
 - [ ] Task 7: Mua VPS + Ansible baseline
@@ -569,6 +569,12 @@ Ghi theo mẫu: `YYYY-MM-DD | Task N | Quyết định / phiên bản đã pin /
 | 2026-10-16 | 3B | Chỉnh màu so với plan để đạt tương phản trên nền hover `#f5f5f5`: P2 `#d97706`, P4 `#8a8a8a` (vòng ≥ 3:1), ngày hôm nay `#057a24`, ngày mai `#9a5700`, chữ phụ `#707070` (≥ 4.5:1) | Màu ban đầu chỉ đạt chuẩn trên nền trắng |
 | 2026-10-16 | 3B | Đổi "Hộp thư đến" thành "Ghi nhanh" (migration 0003). Số việc trên sidebar thành huy hiệu, Hôm nay chuyển đỏ khi có việc quá hạn | Theo yêu cầu người dùng |
 | 2026-10-16 | 3B | Thêm Lịch tuần dạng thời khóa biểu (`/week`). Migration 0004 thêm `due_time` và `duration_minutes` (15–720 phút). Giờ bắt buộc có ngày, thời lượng bắt buộc có giờ. Xóa ngày thì giờ tự bị xóa. Thêm nhanh hiểu được "9h", "3h chiều", "lúc 14:30", "trong 2 tiếng" | Người dùng chọn phương án A. Chi tiết ở mục 10 của `docs/app-feature-plan.md` |
+| 2026-10-16 | - | Mọi dữ liệu phát sinh trên máy dev lưu ở ổ D: file tạm ở `D:\ĐỒ ÁN II\kiro-tmp\`, dữ liệu Docker Desktop ở `D:\Docker`. Distro WSL `Ubuntu-24.04` đã nằm sẵn ở `D:\WSL\Ubuntu`. Đã ghi vào `.kiro/steering/project.md` | Ổ C của người dùng chỉ còn khoảng 5,7 GB |
+| 2026-10-16 | 4 | Pin image: `python:3.12.15-slim-trixie`, `node:24.22.0-alpine3.24` (stage build), `nginxinc/nginx-unprivileged:1.30.6-alpine3.24` (nhánh stable), `postgres:18.6-alpine` | Bản patch mới nhất. nginx dùng nhánh stable 1.30 thay vì mainline 1.31 |
+| 2026-10-16 | 4 | Container backend và frontend chạy `read_only`, `cap_drop: ALL`, `no-new-privileges`, user không phải root (backend UID 10001). Code trong image thuộc root, app không sửa được. Postgres không mở cổng ra host | Theo skill `container-hardening`, chuẩn bị cho `readOnlyRootFilesystem` ở Task 6 |
+| 2026-10-16 | 4 | Entrypoint backend chạy `alembic upgrade head` (tắt được bằng `RUN_MIGRATIONS=false`). nginx thêm security header + CSP, cache lâu cho `/assets/`, `no-cache` cho `index.html`. Địa chỉ upstream `/api` lấy từ biến `API_UPSTREAM` | Để Task 6 chọn được cách chạy migration (trong entrypoint hoặc Helm hook) mà không phải sửa image |
+| 2026-10-16 | 4 | `smoke-test.sh` kiểm tra thêm `/api/readyz` và SPA fallback (`/week`). Hỗ trợ `SMOKE_AUTH=user:pass` cho Basic Auth ở Ingress | Pipeline CD (Task 10/11) phải đi qua Basic Auth |
+| 2026-10-16 | 4 | Kết quả: image backend 324 MB, frontend 91 MB. Container frontend read-only cần tmpfs `/etc/nginx/conf.d` thuộc UID 101 (nginx) để entrypoint render template | Lần chạy đầu frontend bị unhealthy: tmpfs mặc định thuộc root nên config không được tạo, nginx không listen 8080 |
 
 ## 9. Skill tham khảo (`.kiro/skills/`)
 

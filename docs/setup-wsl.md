@@ -36,6 +36,8 @@ docker version      # có cả phần Client và Server
 
 Nếu `which docker` trả về đường dẫn `/mnt/c/...` nghĩa là tích hợp WSL chưa bật.
 
+**Nếu ổ C ít dung lượng**, chuyển dữ liệu Docker (image, volume) sang ổ khác: Docker Desktop → Settings → Resources → Advanced → **Disk image location** → chọn ví dụ `D:\Docker` → Apply & restart. Distro WSL cũng có thể chuyển bằng `wsl --manage Ubuntu-24.04 --move D:\WSL\Ubuntu` (chạy `wsl --shutdown` trước).
+
 ## 3. Cấu hình Git
 
 ```bash
