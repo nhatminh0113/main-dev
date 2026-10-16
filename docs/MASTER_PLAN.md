@@ -175,8 +175,8 @@ Quy ước:
 - **[Bạn]** Tạo repo public trên GitHub, push cả 2 nhánh.
 
 **Tiêu chí hoàn thành:**
-- [ ] Trong WSL, các lệnh `ansible --version`, `terraform version`, `kubectl version --client`, `helm version`, `docker version`, `node --version` đều chạy được.
-- [ ] Repo trên GitHub có đủ cấu trúc, nhánh `main` và `develop`.
+- [x] Trong WSL, các lệnh `ansible --version`, `terraform version`, `kubectl version --client`, `helm version`, `docker version`, `node --version` đều chạy được.
+- [x] Repo trên GitHub có đủ cấu trúc, nhánh `main` và `develop`.
 
 ---
 
@@ -503,7 +503,7 @@ Quy ước:
 
 ## 7. Tiến độ
 
-- [ ] Task 1: Khởi tạo repo và môi trường WSL2
+- [x] Task 1: Khởi tạo repo và môi trường WSL2
 - [ ] Task 2: Backend FastAPI (TDD)
 - [ ] Task 3: Frontend React
 - [ ] Task 4: Docker hóa và Docker Compose
@@ -529,6 +529,7 @@ Ghi theo mẫu: `YYYY-MM-DD | Task N | Quyết định / phiên bản đã pin /
 | 2026-10-16 | 1 | Dùng Helm 4: ở Task 10/11 dùng `--rollback-on-failure` thay cho `--atomic` | Helm 4 đổi tên `--atomic` (vẫn chạy nhưng deprecated, sẽ bị bỏ). Helm 3 sắp hết hỗ trợ |
 | 2026-10-16 | 1 | Thêm `scripts/setup-wsl-tools.sh` (cài tool vào `~/.local/bin`, kiểm tra SHA-256, chạy lại được) và `.gitattributes` (ép LF) | Ngoài cấu trúc mục 5 nhưng giúp cài đặt lặp lại được, và tránh lỗi CRLF khi sửa file trên Windows rồi chạy trong WSL |
 | 2026-10-16 | 1 | Repo được khởi tạo tại workspace Windows (`D:\`), sau khi push lên GitHub thì clone vào `~/projects` trong WSL để làm từ Task 7 | Kiro đang mở workspace trên ổ D. Task 2–6 không bị ảnh hưởng, Ansible bắt buộc phải chạy trong filesystem WSL |
+| 2026-10-16 | 1 | Repo GitHub: `nhatminh0113/main-dev` (public), push lần đầu qua HTTPS (Git Credential Manager). SSH key tạo sau, bắt buộc có trước Task 7 | Người dùng chưa có SSH key, tiêu chí Task 1 không phụ thuộc SSH key |
 
 ## 9. Skill tham khảo (`.kiro/skills/`)
 
