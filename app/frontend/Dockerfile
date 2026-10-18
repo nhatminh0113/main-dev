@@ -18,6 +18,12 @@ FROM nginxinc/nginx-unprivileged:1.30.6-alpine3.24
 # On Kubernetes the Ingress routes /api to the backend before it reaches nginx.
 ENV API_UPSTREAM=http://backend:8000
 
+# CVE-2026-77214 (libexpat, HIGH): the base image still ships 2.8.5-r0, fixed in 2.9.0-r0.
+# Require the fixed version explicitly. Remove this block once the base image tag includes it.
+USER root
+RUN apk add --no-cache 'libexpat>=2.9.0-r0'
+USER 101
+
 # Rendered by the image's entrypoint (envsubst) into /etc/nginx/conf.d/default.conf
 COPY nginx.conf.template /etc/nginx/templates/default.conf.template
 COPY --from=build /app/dist /usr/share/nginx/html
