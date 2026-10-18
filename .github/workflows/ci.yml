@@ -13,10 +13,21 @@
 
 name: CI
 
+# Manual runs can be named from the Actions tab (e.g. "Demo 8"); push and pull request
+# runs keep the commit message / PR title. A manual run never pushes images
+# (the image job only logs in and pushes when the event is "push").
+run-name: ${{ inputs.demo_name || github.event.head_commit.message || github.event.pull_request.title }}
+
 on:
   pull_request:
   push:
     branches: [develop, main]
+  workflow_dispatch:
+    inputs:
+      demo_name:
+        description: Tên hiển thị của lần chạy (ví dụ Demo 8)
+        required: false
+        type: string
 
 permissions:
   contents: read
