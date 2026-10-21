@@ -1,0 +1,15 @@
+Taskapp {{ include "taskapp.imageTag" . }} deployed to namespace "{{ .Release.Namespace }}".
+
+{{- if .Values.ingress.enabled }}
+URL: {{ if .Values.ingress.tls.enabled }}https{{ else }}http{{ end }}://{{ .Values.ingress.host }}
+{{- end }}
+
+Secrets this release expects (created outside the chart):
+  - {{ .Values.database.existingSecret }} (key "{{ .Values.database.passwordKey }}"): PostgreSQL password, URL-safe
+{{- if .Values.basicAuth.enabled }}
+  - {{ .Values.basicAuth.existingSecret }} (key "users"): htpasswd line(s) for Basic Auth
+{{- end }}
+
+Check:
+  kubectl -n {{ .Release.Namespace }} get pods -l app.kubernetes.io/instance={{ .Release.Name }}
+  scripts/smoke-test.sh {{ if .Values.ingress.tls.enabled }}https{{ else }}http{{ end }}://{{ .Values.ingress.host }}

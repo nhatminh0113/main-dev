@@ -1,0 +1,16 @@
+{{- if and .Values.ingress.enabled .Values.basicAuth.enabled }}
+# HTTP Basic Auth for the whole site. The referenced Secret (key "users", htpasswd format)
+# is created by the pipeline; the chart never contains credentials.
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: {{ include "taskapp.fullname" . }}-basic-auth
+  labels:
+    {{- include "taskapp.labels" (dict "ctx" . "component" "ingress") | nindent 4 }}
+spec:
+  basicAuth:
+    secret: {{ .Values.basicAuth.existingSecret }}
+    realm: taskapp
+    # Do not forward the Authorization header to the app.
+    removeHeader: true
+{{- end }}

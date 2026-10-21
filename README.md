@@ -8,10 +8,12 @@
 - Hai môi trường: `staging` (nhánh `develop`) và `prod` (nhánh `main`, có duyệt thủ công).
 - HTTPS bằng cert-manager + Let's Encrypt, monitoring bằng Prometheus + Grafana.
 
-## Tài liệu
+![CI](https://github.com/nhatminh0113/main-dev/actions/workflows/ci.yml/badge.svg?branch=develop)
 
-- [Kế hoạch tổng thể (MASTER_PLAN)](docs/MASTER_PLAN.md)
-- [Cài đặt môi trường dev trên WSL2](docs/setup-wsl.md)
+## Tiến độ
+
+- Đã xong: ứng dụng, Docker Compose, CI (lint, test, build, Trivy, push GHCR), Helm chart.
+- Đang làm: cấu hình VPS bằng Ansible, k3s, Terraform, CD lên staging và production, monitoring.
 
 ## Cấu trúc thư mục
 
@@ -24,7 +26,51 @@
 | `infra/terraform` | Tài nguyên nền tảng trên cluster |
 | `scripts` | Script tiện ích (cài tool, smoke test, tunnel, load test) |
 | `.github/workflows` | Pipeline CI/CD |
-| `docs` | Tài liệu dự án |
+
+## Chạy cả stack bằng Docker Compose
+
+```bash
+cp .env.example .env
+sed -i "s/^POSTGRES_PASSWORD=.*/POSTGRES_PASSWORD=$(openssl rand -hex 16)/" .env
+docker compose up -d --build
+docker compose ps                         # 3 service đều "healthy"
+scripts/smoke-test.sh http://localhost:8080
+```
+
+Mở http://localhost:8080 (API docs: http://localhost:8080/api/docs). Dừng: `docker compose down` (thêm `-v` để xóa cả dữ liệu).
+
+## Chạy backend local (trong WSL)
+
+```bash
+# PostgreSQL cho test (cổng 5433)
+docker run -d --name taskapp-test-db -p 5433:5432 \
+  -e POSTGRES_USER=taskapp -e POSTGRES_PASSWORD=taskapp -e POSTGRES_DB=taskapp_test \
+  postgres:18.6-alpine
+
+cd app/backend
+python3 -m venv ~/.venvs/taskapp-backend
+~/.venvs/taskapp-backend/bin/pip install -r requirements-dev.txt
+source ~/.venvs/taskapp-backend/bin/activate
+
+ruff check . && ruff format --check .
+pytest                     # yêu cầu coverage >= 80%
+
+# Chạy API: http://localhost:8000/api/docs
+export DATABASE_URL=postgresql+psycopg://taskapp:taskapp@localhost:5433/taskapp_test
+alembic upgrade head
+uvicorn app.main:app --reload
+```
+
+## Chạy frontend local (trong WSL)
+
+```bash
+cd app/frontend
+npm ci
+npm run lint
+npm test -- --run
+npm run build
+npm run dev        # http://localhost:5173, /api được proxy tới http://localhost:8000
+```
 
 ## Nhánh
 

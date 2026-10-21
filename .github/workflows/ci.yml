@@ -1,0 +1,213 @@
+
+name: CI
+
+# Manual runs can be named from the Actions tab (e.g. "Demo 8"); push and pull request
+# runs keep the commit message / PR title. A manual run never pushes images
+# (the image job only logs in and pushes when the event is "push").
+run-name: ${{ inputs.demo_name || github.event.head_commit.message || github.event.pull_request.title }}
+
+on:
+  pull_request:
+  push:
+    branches: [develop, main]
+  workflow_dispatch:
+    inputs:
+      demo_name:
+        description: Tên hiển thị của lần chạy (ví dụ Demo 8)
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  REGISTRY: ghcr.io
+  PYTHON_VERSION: "3.12"
+  NODE_VERSION: "24.22.0"
+
+jobs:
+  backend:
+    name: Backend 
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: app/backend
+    services:
+      postgres:
+        image: postgres:18.6-alpine
+        env:
+          POSTGRES_USER: taskapp
+          POSTGRES_PASSWORD: taskapp # throwaway CI database, not a secret
+          POSTGRES_DB: taskapp_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U taskapp -d taskapp_test"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      TEST_DATABASE_URL: postgresql+psycopg://taskapp:taskapp@localhost:5432/taskapp_test
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@v7.0.0
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: |
+            app/backend/requirements.txt
+            app/backend/requirements-dev.txt
+
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+
+      - name: Lint (ruff)
+        run: |
+          ruff check --output-format=github .
+          ruff format --check .
+
+      - name: Test (pytest, coverage >= 80%)
+        run: pytest --cov-report=term-missing:skip-covered
+
+  frontend:
+    name: Frontend (eslint + vitest + build)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: app/frontend
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: app/frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Lint (eslint)
+        run: npm run lint
+
+      - name: Test (vitest)
+        run: npm test -- --run
+
+      - name: Build
+        run: npm run build
+
+  helm:
+    name: Helm chart (lint + kubeconform)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      HELM_VERSION: v4.3.1
+      KUBECONFORM_VERSION: v0.8.0
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+
+      # Official release binaries, verified against their published SHA-256 checksums.
+      - name: Install helm and kubeconform
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/bin" && cd "$RUNNER_TEMP"
+          curl -fsSLO "https://get.helm.sh/helm-${HELM_VERSION}-linux-amd64.tar.gz"
+          curl -fsSLO "https://get.helm.sh/helm-${HELM_VERSION}-linux-amd64.tar.gz.sha256sum"
+          sha256sum -c "helm-${HELM_VERSION}-linux-amd64.tar.gz.sha256sum"
+          tar -xzf "helm-${HELM_VERSION}-linux-amd64.tar.gz" linux-amd64/helm
+          install -m 0755 linux-amd64/helm bin/helm
+          base="https://github.com/yannh/kubeconform/releases/download/${KUBECONFORM_VERSION}"
+          curl -fsSLO "${base}/kubeconform-linux-amd64.tar.gz"
+          curl -fsSL -o kubeconform.sums "${base}/CHECKSUMS"
+          grep ' kubeconform-linux-amd64.tar.gz$' kubeconform.sums | sha256sum -c -
+          tar -xzf kubeconform-linux-amd64.tar.gz kubeconform
+          install -m 0755 kubeconform bin/kubeconform
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+
+      - name: Lint and validate (staging + prod values)
+        run: bash scripts/helm-check.sh
+
+  image:
+    name: Image ${{ matrix.component }} (build + Trivy${{ github.event_name == 'push' && ' + push' || '' }})
+    needs: [backend, frontend, helm]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      packages: write # used only by the push steps below (push events)
+    strategy:
+      fail-fast: false
+      matrix:
+        component: [backend, frontend]
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Compute image name and tag
+        id: meta
+        env:
+          OWNER: ${{ github.repository_owner }}
+          COMPONENT: ${{ matrix.component }}
+        run: |
+          image="${REGISTRY}/${OWNER,,}/taskapp-${COMPONENT}"
+          tag="sha-${GITHUB_SHA::7}"
+          echo "image=${image}" >> "$GITHUB_OUTPUT"
+          echo "tag=${tag}" >> "$GITHUB_OUTPUT"
+          echo "ref=${image}:${tag}" >> "$GITHUB_OUTPUT"
+          echo "Image: ${image}:${tag}" >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: docker/setup-buildx-action@v4.4.1
+
+      - name: Build (load into the local Docker engine)
+        uses: docker/build-push-action@v7.4.0
+        with:
+          context: app/${{ matrix.component }}
+          load: true
+          push: false
+          tags: ${{ steps.meta.outputs.ref }}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.title=taskapp-${{ matrix.component }}
+          cache-from: type=gha,scope=${{ matrix.component }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.component }}
+
+      - name: Scan with Trivy (fail on fixable HIGH/CRITICAL)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          version: v0.76.0
+          image-ref: ${{ steps.meta.outputs.ref }}
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          vuln-type: os,library
+          exit-code: "1"
+          format: table
+
+      - name: Log in to GHCR
+        if: github.event_name == 'push'
+        uses: docker/login-action@v4.6.0
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push the scanned image
+        if: github.event_name == 'push'
+        env:
+          REF: ${{ steps.meta.outputs.ref }}
+        # Pushes exactly the image that Trivy scanned (no rebuild).
+        run: docker push "${REF}"

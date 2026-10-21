@@ -1,0 +1,43 @@
+[project]
+name = "taskapp-backend"
+version = "0.1.0"
+description = "Task Manager API (FastAPI + PostgreSQL)"
+requires-python = ">=3.12,<3.13"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+extend-exclude = ["alembic/versions"]
+
+[tool.ruff.lint]
+select = [
+  "E",   # pycodestyle errors
+  "W",   # pycodestyle warnings
+  "F",   # pyflakes
+  "I",   # isort
+  "B",   # flake8-bugbear
+  "UP",  # pyupgrade
+  "S",   # flake8-bandit (security)
+  "SIM", # flake8-simplify
+]
+# FastAPI uses function calls in defaults (Depends/Query)
+ignore = ["B008"]
+
+[tool.ruff.lint.isort]
+# The local alembic/ migrations folder must not make the alembic library look first-party
+known-third-party = ["alembic"]
+known-first-party = ["app"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101"]  # assert is fine in tests
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-ra --cov=app --cov-report=term-missing --cov-fail-under=80"
+# Fail on deprecations raised from our own code so upgrades are noticed early
+filterwarnings = ["error::DeprecationWarning:app\\..*"]
+
+[tool.coverage.run]
+source = ["app"]
+branch = true

@@ -1,0 +1,87 @@
+{{- $fullname := include "taskapp.fullname" . -}}
+{{- $ctx := dict "ctx" . "component" "backend" -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $fullname }}-backend
+  labels:
+    {{- include "taskapp.labels" $ctx | nindent 4 }}
+spec:
+  replicas: {{ .Values.backend.replicas }}
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      {{- include "taskapp.selectorLabels" $ctx | nindent 6 }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        {{- include "taskapp.labels" $ctx | nindent 8 }}
+    spec:
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      securityContext:
+        {{- include "taskapp.podSecurityContext" (dict "uid" 10001) | nindent 8 }}
+      containers:
+        - name: backend
+          image: {{ include "taskapp.image" $ctx }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 8000
+          env:
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.database.existingSecret }}
+                  key: {{ .Values.database.passwordKey }}
+            # $(DB_PASSWORD) is expanded by Kubernetes; the password must be URL-safe.
+            - name: DATABASE_URL
+              value: "postgresql+psycopg://{{ .Values.postgres.username }}:$(DB_PASSWORD)@{{ include "taskapp.postgresHost" . }}:5432/{{ .Values.postgres.database }}"
+            - name: RUN_MIGRATIONS
+              value: {{ .Values.backend.runMigrations | quote }}
+          # Migrations run before uvicorn starts: give start-up up to ~2.5 minutes.
+          startupProbe:
+            httpGet: { path: /api/healthz, port: http }
+            periodSeconds: 5
+            failureThreshold: 30
+          livenessProbe:
+            httpGet: { path: /api/healthz, port: http }
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          readinessProbe:
+            httpGet: { path: /api/readyz, port: http }
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+          resources:
+            {{- toYaml .Values.backend.resources | nindent 12 }}
+          securityContext:
+            {{- include "taskapp.containerSecurityContext" . | nindent 12 }}
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir:
+            sizeLimit: 64Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $fullname }}-backend
+  labels:
+    {{- include "taskapp.labels" $ctx | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    {{- include "taskapp.selectorLabels" $ctx | nindent 4 }}
+  ports:
+    - name: http
+      port: 8000
+      targetPort: http

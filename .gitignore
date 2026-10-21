@@ -77,6 +77,12 @@ vault_pass*
 *.dec.yml
 vault.plain.yml
 
+# ---------- Local only: docs, report, AI assistant config ----------
+# The public repository contains code only.
+docs/
+.kiro/
+_build_docx.py
+
 # ---------- Helm ----------
 helm/**/charts/*.tgz
 infra/terraform/charts/**/charts/*.tgz
