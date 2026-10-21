@@ -1,6 +1,5 @@
 # syntax=docker/dockerfile:1
 
-# ---------- build: install dependencies into a self-contained virtualenv ----------
 FROM python:3.12.15-slim-trixie AS build
 
 ENV PIP_NO_CACHE_DIR=1 \
@@ -13,7 +12,7 @@ COPY requirements.txt /tmp/requirements.txt
 RUN pip install --require-virtualenv -r /tmp/requirements.txt
 
 
-# ---------- runtime: no build tools, non-root, read-only friendly ----------
+
 FROM python:3.12.15-slim-trixie AS runtime
 
 ENV PATH="/opt/venv/bin:$PATH" \
@@ -25,7 +24,6 @@ RUN groupadd --system --gid 10001 app \
 
 WORKDIR /app
 COPY --from=build /opt/venv /opt/venv
-# Code stays owned by root: the app user can read but not modify it.
 COPY alembic.ini ./
 COPY alembic ./alembic
 COPY app ./app

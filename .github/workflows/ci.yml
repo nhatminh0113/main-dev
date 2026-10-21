@@ -1,15 +1,3 @@
-# Continuous integration: every pull request and every push to develop/main.
-#
-# - backend:  ruff (lint + format) and pytest against a real PostgreSQL service container
-# - frontend: eslint, vitest, production build
-# - helm:     helm lint + kubeconform for the staging and prod values
-# - image:    build both Docker images, scan them with Trivy, push to GHCR (push events only)
-#
-# Security notes (public repository):
-# - Everything runs on GitHub-hosted runners; nothing here uses the self-hosted "vps" runner.
-# - The default token is read-only; only the image job gets packages: write, and it only
-#   logs in / pushes on push events (never for pull requests).
-# - First-party actions are pinned to an exact release tag, third-party actions to a commit SHA.
 
 name: CI
 
@@ -33,7 +21,6 @@ permissions:
   contents: read
 
 concurrency:
-  # One run per PR / branch: a new push cancels the run still in progress.
   group: ci-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
@@ -44,7 +31,7 @@ env:
 
 jobs:
   backend:
-    name: Backend (ruff + pytest)
+    name: Backend 
     runs-on: ubuntu-latest
     timeout-minutes: 15
     defaults:
@@ -210,7 +197,6 @@ jobs:
           exit-code: "1"
           format: table
 
-      # ---- push: only for pushes to develop/main, never for pull requests ----
       - name: Log in to GHCR
         if: github.event_name == 'push'
         uses: docker/login-action@v4.6.0

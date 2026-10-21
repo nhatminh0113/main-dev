@@ -8,10 +8,12 @@
 - Hai môi trường: `staging` (nhánh `develop`) và `prod` (nhánh `main`, có duyệt thủ công).
 - HTTPS bằng cert-manager + Let's Encrypt, monitoring bằng Prometheus + Grafana.
 
-## Tài liệu
+![CI](https://github.com/nhatminh0113/main-dev/actions/workflows/ci.yml/badge.svg?branch=develop)
 
-- [Kế hoạch tổng thể (MASTER_PLAN)](docs/MASTER_PLAN.md)
-- [Cài đặt môi trường dev trên WSL2](docs/setup-wsl.md)
+## Tiến độ
+
+- Đã xong: ứng dụng, Docker Compose, CI (lint, test, build, Trivy, push GHCR), Helm chart.
+- Đang làm: cấu hình VPS bằng Ansible, k3s, Terraform, CD lên staging và production, monitoring.
 
 ## Cấu trúc thư mục
 
@@ -24,7 +26,6 @@
 | `infra/terraform` | Tài nguyên nền tảng trên cluster |
 | `scripts` | Script tiện ích (cài tool, smoke test, tunnel, load test) |
 | `.github/workflows` | Pipeline CI/CD |
-| `docs` | Tài liệu dự án |
 
 ## Chạy cả stack bằng Docker Compose
 
