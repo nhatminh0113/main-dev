@@ -1,0 +1,11 @@
+apiVersion: v2
+name: taskapp
+description: Task Manager (React + FastAPI + PostgreSQL) for k3s
+type: application
+version: 0.1.0
+# The image tag is set per deployment (--set image.tag=sha-xxxxxxx); appVersion is informational.
+appVersion: "0.1.0"
+kubeVersion: ">=1.30.0-0"
+home: https://github.com/nhatminh0113/main-dev
+sources:
+  - https://github.com/nhatminh0113/main-dev

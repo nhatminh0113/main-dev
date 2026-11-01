@@ -1,0 +1,21 @@
+# Staging (namespace "staging", deployed on every push to develop).
+# helm upgrade --install taskapp ./helm/taskapp -n staging -f helm/taskapp/values-staging.yaml \
+#   --set image.tag=sha-xxxxxxx --set ingress.host=staging.<base_domain>
+
+backend:
+  replicas: 1
+
+frontend:
+  replicas: 1
+
+postgres:
+  storage:
+    size: 1Gi
+
+ingress:
+  tls:
+    # Trusted certificate so the pipeline smoke test (curl) can verify TLS.
+    clusterIssuer: letsencrypt-prod
+
+basicAuth:
+  enabled: true
