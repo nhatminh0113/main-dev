@@ -14,7 +14,14 @@ class Base(DeclarativeBase):
 @lru_cache
 def get_engine() -> Engine:
     # Created lazily so importing the app never requires a running database.
-    return create_engine(get_settings().database_url, pool_pre_ping=True)
+    # hide_parameters keeps bound values (task data) out of error messages and tracebacks;
+    # connect_timeout bounds probes when the database host is unreachable.
+    return create_engine(
+        get_settings().database_url,
+        pool_pre_ping=True,
+        hide_parameters=True,
+        connect_args={"connect_timeout": 5},
+    )
 
 
 @lru_cache

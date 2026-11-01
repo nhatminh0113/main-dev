@@ -4,6 +4,7 @@ import { Dialog } from '../components/Dialog'
 import { MenuIcon } from '../components/icons'
 import { NameColorDialog, type EditTarget } from '../components/NameColorDialog'
 import { QuickAdd } from '../components/QuickAdd'
+import { SettingsDialog } from '../components/SettingsDialog'
 import { ShortcutsDialog } from '../components/ShortcutsDialog'
 import { TaskDialog } from '../components/TaskDialog'
 import { useHotkeys } from '../lib/useHotkeys'
@@ -22,6 +23,7 @@ export function AppShell() {
   const [taskId, setTaskId] = useState<number | null>(null)
   const [editTarget, setEditTarget] = useState<EditTarget>(null)
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
 
   // Close the mobile drawer after navigating.
   // eslint-disable-next-line react-hooks/set-state-in-effect -- reacting to route changes
@@ -34,6 +36,7 @@ export function AppShell() {
       editProject: (item) => setEditTarget({ kind: 'project', item }),
       editLabel: (item) => setEditTarget({ kind: 'label', item }),
       openShortcuts: () => setShortcutsOpen(true),
+      openSettings: () => setSettingsOpen(true),
     }),
     [],
   )
@@ -97,6 +100,7 @@ export function AppShell() {
       <TaskDialog taskId={taskId} onClose={() => setTaskId(null)} />
       <NameColorDialog target={editTarget} onClose={() => setEditTarget(null)} />
       <ShortcutsDialog open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
+      <SettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </UIContext.Provider>
   )
 }

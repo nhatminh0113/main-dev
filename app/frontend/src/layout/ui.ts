@@ -19,6 +19,7 @@ export interface UIActions {
   editProject: (project?: Project) => void
   editLabel: (label?: Label) => void
   openShortcuts: () => void
+  openSettings: () => void
 }
 
 const noop = () => {}
@@ -29,6 +30,7 @@ export const UIContext = createContext<UIActions>({
   editProject: noop,
   editLabel: noop,
   openShortcuts: noop,
+  openSettings: noop,
 })
 
 export const useUI = () => useContext(UIContext)

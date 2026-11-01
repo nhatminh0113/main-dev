@@ -102,5 +102,26 @@ export interface TaskQuery {
   limit?: number
 }
 
+/** Feature flags known to the UI (rows of the backend `feature_flags` table). */
+export type FeatureKey = 'export_csv' | 'week_view'
+
+export interface FeatureFlag {
+  key: string
+  enabled: boolean
+  description: string
+  updated_at: string
+}
+
+export type ExportStatus = 'queued' | 'running' | 'done' | 'failed'
+
+export interface ExportJob {
+  id: number
+  status: ExportStatus
+  created_at: string
+  finished_at: string | null
+  expires_at: string
+  error: string | null
+}
+
 export const TITLE_MAX_LENGTH = 500
 export const DESCRIPTION_MAX_LENGTH = 5000

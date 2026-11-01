@@ -1,7 +1,14 @@
 from datetime import date, datetime, time
 from typing import Annotated, ClassVar, Literal, Self
 
-from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    StrictBool,
+    StringConstraints,
+    model_validator,
+)
 
 from app.models import (
     DESCRIPTION_MAX_LENGTH,
@@ -169,3 +176,36 @@ class TaskRead(BaseModel):
 
 class HealthStatus(BaseModel):
     status: str
+
+
+# ---------- Feature flags ----------
+
+
+class FeatureFlagRead(BaseModel):
+    # Field order is a contract: the smoke test greps for "key":...,"enabled":...
+    model_config = ConfigDict(from_attributes=True)
+
+    key: str
+    enabled: bool
+    description: str
+    updated_at: datetime
+
+
+class FeatureFlagUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    enabled: StrictBool
+
+
+# ---------- Exports ----------
+
+
+class ExportStatus(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    status: Literal["queued", "running", "done", "failed"]
+    created_at: datetime
+    finished_at: datetime | None
+    expires_at: datetime
+    error: str | None

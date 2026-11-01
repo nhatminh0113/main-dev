@@ -1,4 +1,14 @@
-import type { Label, Project, Task, TaskCreate, TaskQuery, TaskUpdate, Color } from './types'
+import type {
+  Color,
+  ExportJob,
+  FeatureFlag,
+  Label,
+  Project,
+  Task,
+  TaskCreate,
+  TaskQuery,
+  TaskUpdate,
+} from './types'
 
 /** Error returned by the API (non-2xx) or raised when the server is unreachable (status 0). */
 export class ApiError extends Error {
@@ -78,4 +88,16 @@ export const api = {
       request<Label>(`/labels/${id}`, json('PATCH', changes)),
     remove: (id: number) => request<void>(`/labels/${id}`, json('DELETE')),
   },
+  features: {
+    list: () => request<FeatureFlag[]>('/features'),
+    update: (key: string, enabled: boolean) =>
+      request<FeatureFlag>(`/features/${encodeURIComponent(key)}`, json('PATCH', { enabled })),
+  },
+  exports: {
+    create: () => request<ExportJob>('/exports', json('POST')),
+    get: (id: number) => request<ExportJob>(`/exports/${id}`),
+  },
 }
+
+/** Same origin: the browser sends Basic Auth itself, so a plain link works. */
+export const exportDownloadUrl = (id: number) => `${BASE}/exports/${id}/download`

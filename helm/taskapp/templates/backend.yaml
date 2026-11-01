@@ -34,14 +34,8 @@ spec:
             - name: http
               containerPort: 8000
           env:
-            - name: DB_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Values.database.existingSecret }}
-                  key: {{ .Values.database.passwordKey }}
-            # $(DB_PASSWORD) is expanded by Kubernetes; the password must be URL-safe.
-            - name: DATABASE_URL
-              value: "postgresql+psycopg://{{ .Values.postgres.username }}:$(DB_PASSWORD)@{{ include "taskapp.postgresHost" . }}:5432/{{ .Values.postgres.database }}"
+            {{- include "taskapp.databaseEnv" . | nindent 12 }}
+            {{- include "taskapp.loggingEnv" . | nindent 12 }}
             - name: RUN_MIGRATIONS
               value: {{ .Values.backend.runMigrations | quote }}
           # Migrations run before uvicorn starts: give start-up up to ~2.5 minutes.

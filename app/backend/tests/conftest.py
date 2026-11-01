@@ -8,7 +8,7 @@ Tests run against a real PostgreSQL database. Point TEST_DATABASE_URL at it, e.g
 """
 
 import os
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from pathlib import Path
 
 # Must be set before the application (and its settings) is imported.
@@ -24,6 +24,7 @@ from alembic.config import Config  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
 from sqlalchemy import text  # noqa: E402
 
+from app import features  # noqa: E402
 from app.db import get_engine  # noqa: E402
 from app.main import app  # noqa: E402
 
@@ -33,6 +34,8 @@ BACKEND_DIR = Path(__file__).resolve().parent.parent
 def alembic_config() -> Config:
     cfg = Config(str(BACKEND_DIR / "alembic.ini"))
     cfg.set_main_option("script_location", str(BACKEND_DIR / "alembic"))
+    # In-process migrations must not reconfigure logging (pytest owns it here).
+    cfg.attributes["configure_logger"] = False
     return cfg
 
 
@@ -54,6 +57,25 @@ def clean_tables() -> Iterator[None]:
     with get_engine().begin() as conn:
         conn.execute(text("TRUNCATE TABLE task_labels, tasks, labels RESTART IDENTITY CASCADE"))
         conn.execute(text("DELETE FROM projects WHERE NOT is_inbox"))
+        # Tolerant: a failed migration test may leave the schema below 0005.
+        if conn.execute(text("SELECT to_regclass('public.jobs') IS NOT NULL")).scalar_one():
+            conn.execute(text("TRUNCATE TABLE jobs RESTART IDENTITY"))
+            # Back to the migration 0005 seed (a test may have deleted or toggled a row).
+            conn.execute(
+                text("DELETE FROM feature_flags WHERE key NOT IN ('export_csv', 'week_view')")
+            )
+            conn.execute(
+                text(
+                    "INSERT INTO feature_flags (key, enabled, description) VALUES "
+                    "('export_csv', false, :export_desc), ('week_view', true, :week_desc) "
+                    "ON CONFLICT (key) DO UPDATE SET enabled = EXCLUDED.enabled"
+                ),
+                {
+                    "export_desc": "Xuất danh sách công việc ra tệp CSV (worker chạy nền)",
+                    "week_desc": "Màn Lịch tuần dạng thời khóa biểu",
+                },
+            )
+    features.cache.invalidate()
 
 
 @pytest.fixture
@@ -61,6 +83,17 @@ def client() -> Iterator[TestClient]:
     with TestClient(app) as test_client:
         yield test_client
     app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def enable_flag(client: TestClient) -> Callable[..., None]:
+    """Factory: enable_flag("export_csv") or enable_flag("export_csv", False), via the API."""
+
+    def _set(key: str, enabled: bool = True) -> None:
+        response = client.patch(f"/api/features/{key}", json={"enabled": enabled})
+        assert response.status_code == 200, response.text
+
+    return _set
 
 
 @pytest.fixture

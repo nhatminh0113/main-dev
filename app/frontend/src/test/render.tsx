@@ -14,13 +14,22 @@ export function freezeTime() {
   vi.setSystemTime(TEST_NOW)
 }
 
-/** Render the whole app at `route` against a fresh fake API. */
-export function renderApp(route = '/today', api: FakeApi = createFakeApi()) {
+type UserOptions = Parameters<typeof userEvent.setup>[0]
+
+/**
+ * Render the whole app at `route` against a fresh fake API. `userOptions` go to
+ * `userEvent.setup` (e.g. `advanceTimers` for tests with fake timers).
+ */
+export function renderApp(
+  route = '/today',
+  api: FakeApi = createFakeApi(),
+  userOptions?: UserOptions,
+) {
   vi.stubGlobal('fetch', api.fetch)
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false, staleTime: 0 }, mutations: { retry: false } },
   })
-  const user = userEvent.setup()
+  const user = userEvent.setup(userOptions)
   const utils = render(
     <AppProviders client={client}>
       <MemoryRouter initialEntries={[route]}>

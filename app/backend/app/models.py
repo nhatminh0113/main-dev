@@ -1,12 +1,15 @@
 from datetime import date, datetime, time
+from typing import Any
 
 from sqlalchemy import (
+    BigInteger,
     Boolean,
     CheckConstraint,
     Column,
     Date,
     DateTime,
     ForeignKey,
+    Identity,
     Index,
     Integer,
     SmallInteger,
@@ -17,6 +20,7 @@ from sqlalchemy import (
     func,
     text,
 )
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db import Base
@@ -29,6 +33,9 @@ DURATION_MIN = 15
 DURATION_MAX = 720  # 12 hours
 DEFAULT_PRIORITY = 4  # Todoist convention: 1 = highest (P1), 4 = normal
 INBOX_NAME = "Ghi nhanh"  # the default "inbox" project (renamed in migration 0003)
+JOB_STATUSES = ("queued", "running", "done", "failed")
+JOB_ERROR_MAX = 500
+FLAG_KEY_MAX = 64
 
 
 def _created_at() -> Mapped[datetime]:
@@ -113,4 +120,52 @@ class Task(Base):
 
     labels: Mapped[list[Label]] = relationship(
         secondary=task_labels, lazy="selectin", order_by=Label.name
+    )
+
+
+class Job(Base):
+    """Background job queue row, processed by the worker (python -m app.worker)."""
+
+    __tablename__ = "jobs"
+    __table_args__ = (
+        CheckConstraint(
+            "status IN (" + ", ".join(f"'{s}'" for s in JOB_STATUSES) + ")",
+            name="ck_jobs_status",
+        ),
+        CheckConstraint("attempts >= 0", name="ck_jobs_attempts"),
+        Index("ix_jobs_queued", "id", postgresql_where=text("status = 'queued'")),
+        Index(
+            "ix_jobs_running_started_at", "started_at", postgresql_where=text("status = 'running'")
+        ),
+        Index("ix_jobs_expires_at", "expires_at"),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    type: Mapped[str] = mapped_column(String(50), nullable=False)
+    status: Mapped[str] = mapped_column(String(16), nullable=False, server_default="queued")
+    payload: Mapped[dict[str, Any]] = mapped_column(
+        JSONB, nullable=False, server_default=text("'{}'::jsonb")
+    )
+    result: Mapped[str | None] = mapped_column(Text)
+    error: Mapped[str | None] = mapped_column(String(JOB_ERROR_MAX))
+    attempts: Mapped[int] = mapped_column(SmallInteger, nullable=False, server_default="0")
+    created_at: Mapped[datetime] = _created_at()
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    expires_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=text("(now() + '24:00:00'::interval)"),
+    )
+
+
+class FeatureFlag(Base):
+    __tablename__ = "feature_flags"
+    __table_args__ = (CheckConstraint("key ~ '^[a-z0-9_]+$'", name="ck_feature_flags_key"),)
+
+    key: Mapped[str] = mapped_column(String(FLAG_KEY_MAX), primary_key=True)
+    enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
+    description: Mapped[str] = mapped_column(Text, nullable=False, server_default="")
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now()
     )

@@ -42,11 +42,11 @@ spec:
         - { protocol: TCP, port: 8080 }
         - { protocol: TCP, port: 8000 }
 ---
-# 3. Only the backend may reach PostgreSQL
+# 3. Only the backend and the worker may reach PostgreSQL
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: {{ include "taskapp.fullname" . }}-allow-backend-to-postgres
+  name: {{ include "taskapp.fullname" . }}-allow-app-to-postgres
   labels:
     {{- $labels | nindent 4 }}
 spec:
@@ -57,12 +57,17 @@ spec:
   ingress:
     - from:
         - podSelector:
-            matchLabels:
-              {{- include "taskapp.selectorLabels" (merge (dict "component" "backend") $sel) | nindent 14 }}
+            matchExpressions:
+              - key: app.kubernetes.io/instance
+                operator: In
+                values: [{{ .Release.Name | quote }}]
+              - key: app.kubernetes.io/component
+                operator: In
+                values: [backend, worker]
       ports:
         - { protocol: TCP, port: 5432 }
 ---
-# 4. Prometheus scrapes backend /metrics
+# 4. Prometheus scrapes backend /metrics (8000) and worker /metrics (9000)
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -71,8 +76,13 @@ metadata:
     {{- $labels | nindent 4 }}
 spec:
   podSelector:
-    matchLabels:
-      {{- include "taskapp.selectorLabels" (merge (dict "component" "backend") $sel) | nindent 6 }}
+    matchExpressions:
+      - key: app.kubernetes.io/instance
+        operator: In
+        values: [{{ .Release.Name | quote }}]
+      - key: app.kubernetes.io/component
+        operator: In
+        values: [backend, worker]
   policyTypes: [Ingress]
   ingress:
     - from:
@@ -81,6 +91,7 @@ spec:
               kubernetes.io/metadata.name: {{ $np.monitoringNamespace }}
       ports:
         - { protocol: TCP, port: 8000 }
+        - { protocol: TCP, port: 9000 }
 ---
 # 5. cert-manager HTTP-01 solver pods (created in this namespace while a certificate is
 #    issued or renewed) must be reachable from Traefik, otherwise renewals fail.

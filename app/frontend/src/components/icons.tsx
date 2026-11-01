@@ -189,6 +189,21 @@ export const KeyboardIcon = (p: IconProps) => (
   </Svg>
 )
 
+/** Settings: two sliders. */
+export const SettingsIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M4 8h9M17 8h3M4 16h3M11 16h9" />
+    <circle cx="15" cy="8" r="2" />
+    <circle cx="9" cy="16" r="2" />
+  </Svg>
+)
+
+export const DownloadIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M12 4v11M7.5 10.5 12 15l4.5-4.5M5 19h14" />
+  </Svg>
+)
+
 export function LogoMark({ size = 24 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" focusable="false">

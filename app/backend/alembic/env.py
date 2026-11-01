@@ -1,16 +1,17 @@
-from logging.config import fileConfig
-
 from alembic import context
 from sqlalchemy import engine_from_config, pool, text
 
 import app.models  # noqa: F401  (registers models on Base.metadata)
 from app.config import get_settings
 from app.db import Base
+from app.logging_setup import configure_logging
 
 config = context.config
 
-if config.config_file_name is not None:
-    fileConfig(config.config_file_name, disable_existing_loggers=False)
+# Same JSON logging as the app. Callers that manage logging themselves (pytest, running
+# migrations in-process) set config.attributes["configure_logger"] = False.
+if config.attributes.get("configure_logger", True):
+    configure_logging()
 
 config.set_main_option("sqlalchemy.url", get_settings().database_url.replace("%", "%%"))
 

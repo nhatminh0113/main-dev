@@ -95,6 +95,7 @@ def upgrade() -> None:
 
     # Title limit 200 -> 500
     op.drop_constraint("ck_tasks_title_length", "tasks", type_="check")
+    # migration-safety: ok widening VARCHAR(200) to VARCHAR(500) keeps the previous release working
     op.alter_column("tasks", "title", type_=sa.String(length=500))
     op.create_check_constraint(
         "ck_tasks_title_length", "tasks", "char_length(title) BETWEEN 1 AND 500"

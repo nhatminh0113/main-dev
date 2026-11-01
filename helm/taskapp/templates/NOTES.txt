@@ -10,6 +10,11 @@ Secrets this release expects (created outside the chart):
   - {{ .Values.basicAuth.existingSecret }} (key "users"): htpasswd line(s) for Basic Auth
 {{- end }}
 
+{{- if .Values.worker.enabled }}
+
+Background worker: Deployment {{ include "taskapp.fullname" . }}-worker (same image as the backend, port 9000). Disable with --set worker.enabled=false.
+{{- end }}
+
 Check:
   kubectl -n {{ .Release.Namespace }} get pods -l app.kubernetes.io/instance={{ .Release.Name }}
   scripts/smoke-test.sh {{ if .Values.ingress.tls.enabled }}https{{ else }}http{{ end }}://{{ .Values.ingress.host }}

@@ -17,6 +17,22 @@ backend:
     requests: { cpu: 50m, memory: 96Mi }
     limits: { cpu: 500m, memory: 256Mi }
 
+# Background worker (python -m app.worker): same image as the backend, never runs migrations.
+# Health and Prometheus metrics on port 9000 (/healthz, /readyz, /metrics).
+worker:
+  enabled: true
+  replicas: 1
+  # Seconds between queue polls when idle
+  pollInterval: "2"
+  resources:
+    requests: { cpu: 50m, memory: 64Mi }
+    limits: { cpu: 200m, memory: 192Mi }
+
+# Backend and worker logs: one JSON object per line on stdout (json | text).
+logging:
+  format: json
+  level: INFO
+
 frontend:
   replicas: 1
   resources:

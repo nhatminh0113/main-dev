@@ -1,5 +1,6 @@
 import { NavLink } from 'react-router'
-import { useLabels, useProjects, useTasks } from '../api/hooks'
+import { useFeature, useLabels, useProjects, useTasks } from '../api/hooks'
+import { ExportButton } from '../components/ExportButton'
 import {
   CheckCircleIcon,
   ColorDot,
@@ -8,6 +9,7 @@ import {
   PlusIcon,
   QuickNoteIcon,
   SearchIcon,
+  SettingsIcon,
   TagIcon,
   TodayIcon,
   UpcomingIcon,
@@ -43,7 +45,9 @@ function Count({
 
 export function Sidebar() {
   const today = useToday()
-  const { openQuickAdd, editProject, editLabel, openShortcuts } = useUI()
+  const { openQuickAdd, editProject, editLabel, openShortcuts, openSettings } = useUI()
+  const weekView = useFeature('week_view')
+  const exportCsv = useFeature('export_csv')
   const { data: projects = [] } = useProjects()
   const { data: labels = [] } = useLabels()
   const { data: todayTasks } = useTasks({ done: false, due_to: today })
@@ -102,12 +106,14 @@ export function Sidebar() {
             <span className={styles.text}>Sắp tới</span>
           </NavLink>
         </li>
-        <li>
-          <NavLink to="/week" className={linkClass}>
-            <WeekIcon size={18} />
-            <span className={styles.text}>Lịch tuần</span>
-          </NavLink>
-        </li>
+        {weekView && (
+          <li>
+            <NavLink to="/week" className={linkClass}>
+              <WeekIcon size={18} />
+              <span className={styles.text}>Lịch tuần</span>
+            </NavLink>
+          </li>
+        )}
         <li>
           <NavLink to="/completed" className={linkClass}>
             <CheckCircleIcon size={18} />
@@ -146,13 +152,20 @@ export function Sidebar() {
         {labels.length === 0 && <li className={styles.hint}>Chưa có nhãn</li>}
       </ul>
 
-      <button type="button" className={styles.footer} onClick={openShortcuts}>
-        <KeyboardIcon size={16} />
-        Phím tắt
-        <kbd className={styles.kbd} aria-hidden="true">
-          ?
-        </kbd>
-      </button>
+      <div className={styles.footerGroup}>
+        {exportCsv && <ExportButton />}
+        <button type="button" className={styles.footer} onClick={openSettings}>
+          <SettingsIcon size={16} />
+          Cài đặt
+        </button>
+        <button type="button" className={styles.footer} onClick={openShortcuts}>
+          <KeyboardIcon size={16} />
+          Phím tắt
+          <kbd className={styles.kbd} aria-hidden="true">
+            ?
+          </kbd>
+        </button>
+      </div>
     </nav>
   )
 }

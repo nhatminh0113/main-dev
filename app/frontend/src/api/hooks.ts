@@ -6,7 +6,7 @@ import {
   type QueryKey,
 } from '@tanstack/react-query'
 import { api } from './client'
-import type { Color, Task, TaskCreate, TaskQuery, TaskUpdate } from './types'
+import type { Color, FeatureKey, Task, TaskCreate, TaskQuery, TaskUpdate } from './types'
 
 export const keys = {
   tasks: ['tasks'] as const,
@@ -14,7 +14,59 @@ export const keys = {
   task: (id: number) => ['tasks', 'detail', id] as const,
   projects: ['projects'] as const,
   labels: ['labels'] as const,
+  features: ['features'] as const,
+  export: (id: number) => ['exports', id] as const,
 }
+
+// ---------- feature flags ----------
+
+/**
+ * Used while the flags load or when they cannot be loaded: existing features stay on,
+ * new features stay off (same values as the migration seed).
+ */
+export const DEFAULT_FLAGS: Record<FeatureKey, boolean> = { week_view: true, export_csv: false }
+
+export const useFeatures = () =>
+  useQuery({
+    queryKey: keys.features,
+    queryFn: api.features.list,
+    staleTime: 30_000,
+    refetchOnWindowFocus: true,
+  })
+
+export function useFeature(key: FeatureKey): boolean {
+  const { data } = useFeatures()
+  return data?.find((f) => f.key === key)?.enabled ?? DEFAULT_FLAGS[key]
+}
+
+export function useSetFeature() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ key, enabled }: { key: string; enabled: boolean }) =>
+      api.features.update(key, enabled),
+    onSettled: () => qc.invalidateQueries({ queryKey: keys.features }),
+  })
+}
+
+// ---------- CSV export ----------
+
+export const EXPORT_POLL_MS = 1000
+/** After this many polls a job still queued or running is reported as a timeout. */
+export const EXPORT_MAX_POLLS = 60
+
+export const useCreateExport = () => useMutation({ mutationFn: () => api.exports.create() })
+
+export const useExportJob = (id: number | null) =>
+  useQuery({
+    queryKey: keys.export(id ?? 0),
+    queryFn: () => api.exports.get(id!),
+    enabled: id !== null,
+    refetchInterval: (query) =>
+      ['queued', 'running'].includes(query.state.data?.status ?? 'queued') &&
+      query.state.dataUpdateCount < EXPORT_MAX_POLLS
+        ? EXPORT_POLL_MS
+        : false,
+  })
 
 // ---------- queries ----------
 

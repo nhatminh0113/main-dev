@@ -4,12 +4,28 @@
  * for integration tests of views and dialogs.
  */
 import { vi } from 'vitest'
-import type { Color, Label, Priority, Project, Task } from '../api/types'
+import type {
+  Color,
+  ExportJob,
+  ExportStatus,
+  FeatureFlag,
+  Label,
+  Priority,
+  Project,
+  Task,
+} from '../api/types'
+
+interface FakeExport {
+  job: ExportJob
+  polls: number
+}
 
 interface State {
   projects: Project[]
   labels: Label[]
   tasks: Task[]
+  features: FeatureFlag[]
+  exports: Map<number, FakeExport>
   nextId: number
 }
 
@@ -21,6 +37,10 @@ export interface FakeApi {
   addProject: (name: string, color?: Color) => Project
   addLabel: (name: string, color?: Color) => Label
   addTask: (title: string, fields?: Partial<Task>) => Task
+  /** Change a flag server-side (as another user or replica would). */
+  setFeature: (key: string, enabled: boolean) => void
+  /** Status an export reaches after its first poll; 'running' never finishes. */
+  exportOutcome: Extract<ExportStatus, 'done' | 'failed' | 'running'>
 }
 
 const NOW = '2026-10-16T09:00:00Z'
@@ -43,7 +63,28 @@ export function createFakeApi(): FakeApi {
     ],
     labels: [],
     tasks: [],
+    // Same seed as migration 0005 (and the UI defaults), so existing tests are unaffected.
+    features: [
+      {
+        key: 'export_csv',
+        enabled: false,
+        description: 'Xuất danh sách công việc ra tệp CSV (worker chạy nền)',
+        updated_at: NOW,
+      },
+      {
+        key: 'week_view',
+        enabled: true,
+        description: 'Màn Lịch tuần dạng thời khóa biểu',
+        updated_at: NOW,
+      },
+    ],
+    exports: new Map(),
     nextId: 100,
+  }
+  const flagEnabled = (key: string) => state.features.some((f) => f.key === key && f.enabled)
+  const setFeature = (key: string, enabled: boolean) => {
+    const flag = state.features.find((f) => f.key === key)
+    if (flag) flag.enabled = enabled
   }
   let failure: { method: string; path: string; status: number; detail: string } | null = null
 
@@ -216,6 +257,47 @@ export function createFakeApi(): FakeApi {
       state.tasks = state.tasks.filter((t) => t.id !== task.id && t.parent_id !== task.id)
       return new Response(null, { status: 204 })
     }
+
+    // ---- feature flags
+    if (path === '/api/features' && method === 'GET') return json(state.features)
+    m = /^\/api\/features\/([a-z0-9_]+)$/.exec(path)
+    if (m && method === 'PATCH') {
+      const flag = state.features.find((f) => f.key === m![1])
+      if (!flag) return json({ detail: 'Feature flag not found' }, 404)
+      flag.enabled = body.enabled
+      return json(flag)
+    }
+
+    // ---- exports (403 while export_csv is off, like the real router dependency)
+    if (path.startsWith('/api/exports') && !flagEnabled('export_csv')) {
+      return json({ detail: 'feature_disabled' }, 403)
+    }
+    if (path === '/api/exports' && method === 'POST') {
+      const job: ExportJob = {
+        id: state.nextId++,
+        status: 'queued',
+        created_at: NOW,
+        finished_at: null,
+        expires_at: '2026-10-17T09:00:00Z',
+        error: null,
+      }
+      state.exports.set(job.id, { job, polls: 0 })
+      return json(job, 202)
+    }
+    m = /^\/api\/exports\/(\d+)$/.exec(path)
+    if (m && method === 'GET') {
+      const entry = state.exports.get(Number(m[1]))
+      if (!entry) return json({ detail: 'Export not found' }, 404)
+      entry.polls += 1
+      const status = entry.polls === 1 ? 'running' : fake.exportOutcome
+      entry.job = {
+        ...entry.job,
+        status,
+        finished_at: status === 'running' ? null : NOW,
+        error: status === 'failed' ? 'ValueError' : null,
+      }
+      return json(entry.job)
+    }
     return json({ detail: `No fake route for ${method} ${path}` }, 404)
   }
 
@@ -231,7 +313,7 @@ export function createFakeApi(): FakeApi {
     return handle(method, url.pathname, url.searchParams, body)
   })
 
-  return {
+  const fake: FakeApi = {
     state,
     fetch: fetchMock,
     failNext: (method, path, status, detail) => {
@@ -240,5 +322,8 @@ export function createFakeApi(): FakeApi {
     addProject,
     addLabel,
     addTask,
+    setFeature,
+    exportOutcome: 'done',
   }
+  return fake
 }

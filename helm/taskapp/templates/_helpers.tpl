@@ -46,6 +46,26 @@ app.kubernetes.io/component: {{ .component }}
 {{- printf "%s-postgres" (include "taskapp.fullname" .) -}}
 {{- end }}
 
+{{/* Database connection env for the backend and the worker. Usage: include "taskapp.databaseEnv" . */}}
+{{- define "taskapp.databaseEnv" -}}
+- name: DB_PASSWORD
+  valueFrom:
+    secretKeyRef:
+      name: {{ .Values.database.existingSecret }}
+      key: {{ .Values.database.passwordKey }}
+# $(DB_PASSWORD) is expanded by Kubernetes; the password must be URL-safe.
+- name: DATABASE_URL
+  value: "postgresql+psycopg://{{ .Values.postgres.username }}:$(DB_PASSWORD)@{{ include "taskapp.postgresHost" . }}:5432/{{ .Values.postgres.database }}"
+{{- end }}
+
+{{/* Structured logging env (LOG_FORMAT json|text, LOG_LEVEL). */}}
+{{- define "taskapp.loggingEnv" -}}
+- name: LOG_FORMAT
+  value: {{ .Values.logging.format | quote }}
+- name: LOG_LEVEL
+  value: {{ .Values.logging.level | quote }}
+{{- end }}
+
 {{/* Pod-level hardening shared by every workload (Pod Security Standard "restricted"). */}}
 {{- define "taskapp.podSecurityContext" -}}
 runAsNonRoot: true
