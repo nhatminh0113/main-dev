@@ -1,0 +1,10 @@
+---
+# Trust the internal root CA on the VM (curl on the self-hosted runner, smoke tests).
+# Run after terraform apply in infra/terraform, and again after a cluster rebuild
+# (a new cluster gets a new CA):
+#   ansible-playbook playbooks/ca-trust.yml
+- name: Internal root CA in the system trust store
+  hosts: k3s
+  become: true
+  roles:
+    - role: ca_trust
