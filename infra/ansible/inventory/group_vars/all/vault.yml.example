@@ -1,0 +1,10 @@
+# Template for group_vars/all/vault.yml (Ansible Vault). Task 7 needs no secret,
+# so no vault exists yet. The ".example" extension keeps Ansible from loading this file.
+#
+# Task 10 (GitHub runner):
+#   cp group_vars/all/vault.yml.example group_vars/all/vault.yml
+#   edit the value, then: ansible-vault encrypt group_vars/all/vault.yml
+#   commit only the encrypted vault.yml, never the vault password.
+#
+# The registration token expires after 1 hour: run the github_runner role right after.
+# vault_github_runner_token: "<registration token from Settings > Actions > Runners>"

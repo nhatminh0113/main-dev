@@ -159,6 +159,37 @@ jobs:
       - name: Check upgrade() of every migration
         run: python scripts/check-migrations.py
 
+  ansible:
+    name: Ansible (ansible-lint + syntax-check)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: infra/ansible
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@v7.0.0
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: infra/ansible/requirements-ci.txt
+
+      - name: Install ansible and ansible-lint (pinned)
+        run: pip install -r requirements-ci.txt
+
+      - name: Install collections (pinned in requirements.yml)
+        run: ansible-galaxy collection install -r requirements.yml
+
+      - name: Lint (ansible-lint, production profile)
+        run: ansible-lint
+
+      # The real inventory (LAN IP) is gitignored; the example has the same groups.
+      - name: Syntax check
+        run: ansible-playbook -i inventory/hosts.example.yml --syntax-check playbooks/site.yml
+
   # Build once, deploy many: a push to develop builds, scans and pushes sha-<7> plus a
   # tree-<12> tag (git tree hash of the build context app/<component>). A push to main whose
   # build context matches an existing tree-* tag re-tags that exact manifest as sha-<main7>

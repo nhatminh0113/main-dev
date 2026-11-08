@@ -1,0 +1,4 @@
+# Control-node tools for CI. Same pins as scripts/setup-wsl-tools.sh (pipx in WSL).
+ansible==14.5.0
+ansible-core==2.21.5
+ansible-lint==26.10.1
