@@ -188,7 +188,59 @@ jobs:
 
       # The real inventory (LAN IP) is gitignored; the example has the same groups.
       - name: Syntax check
-        run: ansible-playbook -i inventory/hosts.example.yml --syntax-check playbooks/site.yml
+        run: >-
+          ansible-playbook -i inventory/hosts.example.yml --syntax-check
+          playbooks/site.yml playbooks/k3s.yml playbooks/ca-trust.yml
+
+  # Static checks only: CI has no access to the cluster (no plan/apply here by design).
+  terraform:
+    name: Terraform (fmt + validate + tflint)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    env:
+      TERRAFORM_VERSION: 1.16.6
+      TFLINT_VERSION: v0.64.0
+    defaults:
+      run:
+        working-directory: infra/terraform
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+
+      # Official release binaries, verified against their published SHA-256 checksums.
+      - name: Install terraform and tflint
+        working-directory: ${{ runner.temp }}
+        run: |
+          set -euo pipefail
+          mkdir -p bin
+          tf_zip="terraform_${TERRAFORM_VERSION}_linux_amd64.zip"
+          tf_base="https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}"
+          curl -fsSLO "${tf_base}/${tf_zip}"
+          curl -fsSL -o terraform.sums "${tf_base}/terraform_${TERRAFORM_VERSION}_SHA256SUMS"
+          grep " ${tf_zip}\$" terraform.sums | sha256sum -c -
+          unzip -o -q "${tf_zip}" terraform -d tf
+          install -m 0755 tf/terraform bin/terraform
+          tl_base="https://github.com/terraform-linters/tflint/releases/download/${TFLINT_VERSION}"
+          curl -fsSLO "${tl_base}/tflint_linux_amd64.zip"
+          curl -fsSL -o tflint.sums "${tl_base}/checksums.txt"
+          grep ' tflint_linux_amd64.zip$' tflint.sums | sha256sum -c -
+          unzip -o -q tflint_linux_amd64.zip tflint -d tl
+          install -m 0755 tl/tflint bin/tflint
+          echo "${RUNNER_TEMP}/bin" >> "$GITHUB_PATH"
+
+      - name: Format
+        run: terraform fmt -check -recursive
+
+      - name: Init (no backend) and validate
+        run: |
+          terraform init -backend=false -input=false -lockfile=readonly
+          terraform validate
+
+      - name: Lint (tflint)
+        run: tflint --format compact
 
   # Build once, deploy many: a push to develop builds, scans and pushes sha-<7> plus a
   # tree-<12> tag (git tree hash of the build context app/<component>). A push to main whose
