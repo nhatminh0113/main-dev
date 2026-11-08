@@ -92,25 +92,4 @@ spec:
       ports:
         - { protocol: TCP, port: 8000 }
         - { protocol: TCP, port: 9000 }
----
-# 5. cert-manager HTTP-01 solver pods (created in this namespace while a certificate is
-#    issued or renewed) must be reachable from Traefik, otherwise renewals fail.
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
-metadata:
-  name: {{ include "taskapp.fullname" . }}-allow-acme-solver
-  labels:
-    {{- $labels | nindent 4 }}
-spec:
-  podSelector:
-    matchLabels:
-      acme.cert-manager.io/http01-solver: "true"
-  policyTypes: [Ingress]
-  ingress:
-    - from:
-        - namespaceSelector:
-            matchLabels:
-              kubernetes.io/metadata.name: {{ $np.ingressControllerNamespace }}
-      ports:
-        - { protocol: TCP, port: 8089 }
 {{- end }}

@@ -6,6 +6,8 @@
 #   3. Guard rails: rendering must fail without image.tag, with image.tag=latest or without a host
 #   4. Worker assertions: hardened worker Deployment, Service, ServiceMonitor and the
 #      NetworkPolicy flows (worker -> postgres, monitoring -> worker:9000), worker.enabled=false
+#   5. TLS: Ingress issuer internal-ca, no ACME solver policy; lint + kubeconform of the local
+#      cluster-issuers chart (infra/terraform/charts/cluster-issuers) and its domain guard
 #
 # Usage: scripts/helm-check.sh            (needs helm and kubeconform on PATH)
 set -euo pipefail
@@ -25,7 +27,7 @@ kubeconform_check() {
 }
 
 for env in staging prod; do
-  host="${env}.203.0.113.10.sslip.io"
+  host="${env}.taskapp.internal"
   echo "==> ${env}: helm lint"
   helm lint --strict "${CHART}" -f "${CHART}/values-${env}.yaml" \
     --set image.tag="${TAG}" --set ingress.host="${host}"
@@ -123,6 +125,15 @@ expect_not_in "NetworkPolicy allow-ingress-controller does not admit the worker"
   "$(render_doc NetworkPolicy taskapp-allow-ingress-controller <<<"${full}")" "worker"
 expect_not_in "old policy allow-backend-to-postgres is gone (renamed)" "${full}" \
   "name: taskapp-allow-backend-to-postgres"
+expect_not_in "no ACME HTTP-01 solver NetworkPolicy (internal CA)" "${full}" "allow-acme-solver"
+
+for env in staging prod; do
+  expect_in "${env} Ingress uses ClusterIssuer internal-ca" \
+    "$(helm template taskapp "${CHART}" -n "${env}" -f "${CHART}/values-${env}.yaml" \
+      --set image.tag="${TAG}" --set ingress.host="${env}.taskapp.internal" \
+      | render_doc Ingress taskapp)" \
+    'cert-manager.io/cluster-issuer: "internal-ca"'
+done
 
 no_worker="$(helm template taskapp "${CHART}" -n prod -f "${CHART}/values-prod.yaml" \
   --set image.tag="${TAG}" --set ingress.host=app.example.test \
@@ -130,6 +141,23 @@ no_worker="$(helm template taskapp "${CHART}" -n prod -f "${CHART}/values-prod.y
 expect_not_in "worker.enabled=false renders no worker objects" "${no_worker}" "name: taskapp-worker"
 expect_in "worker.enabled=false keeps the backend ServiceMonitor" \
   "$(render_doc ServiceMonitor taskapp-backend <<<"${no_worker}")" "port: http"
+
+echo "==> cluster-issuers chart (infra/terraform, deployed by Terraform)"
+ISSUERS_CHART="infra/terraform/charts/cluster-issuers"
+ISSUERS_DOMAIN="--set-json=rootCA.permittedDNSDomains=[\"taskapp.internal\"]"
+helm lint --strict "${ISSUERS_CHART}" "${ISSUERS_DOMAIN}"
+issuers="$(helm template cluster-issuers "${ISSUERS_CHART}" -n cert-manager "${ISSUERS_DOMAIN}")"
+kubeconform_check <<<"${issuers}"
+expect_in "root CA Certificate is a name-constrained CA signed by selfsigned" \
+  "$(render_doc Certificate taskapp-root-ca <<<"${issuers}")" \
+  "isCA: true" "namespace: cert-manager" "- taskapp.internal" "name: selfsigned" "algorithm: ECDSA"
+expect_in "ClusterIssuer internal-ca uses the root CA Secret" \
+  "$(render_doc ClusterIssuer internal-ca <<<"${issuers}")" "secretName: taskapp-root-ca"
+if helm template cluster-issuers "${ISSUERS_CHART}" -n cert-manager >/dev/null 2>&1; then
+  echo "FAIL: cluster-issuers should refuse to render without rootCA.permittedDNSDomains" >&2
+  exit 1
+fi
+echo "ok: cluster-issuers refuses to render without rootCA.permittedDNSDomains"
 
 echo "==> rendered image references"
 helm template taskapp "${CHART}" -f "${CHART}/values-prod.yaml" \

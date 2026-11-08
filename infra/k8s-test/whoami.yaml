@@ -1,9 +1,10 @@
-# Temporary Task 8 check: plain HTTP Ingress through the bundled Traefik.
-# Delete after Task 9 (HTTPS check done).
+# Temporary Task 8/9 check: HTTPS Ingress through the bundled Traefik, certificate signed by
+# the internal CA (ClusterIssuer internal-ca, Terraform).
 #
 #   sed "s/BASE_DOMAIN/${BASE_DOMAIN}/g" infra/k8s-test/whoami.yaml | kubectl apply -f -
-#   curl http://test.${BASE_DOMAIN}/
-#   kubectl delete namespace whoami-test
+#   curl https://test.${BASE_DOMAIN}/        (on a host that trusts the root CA)
+#
+# Delete after Task 9: kubectl delete namespace whoami-test
 ---
 apiVersion: v1
 kind: Namespace
@@ -75,8 +76,14 @@ kind: Ingress
 metadata:
   name: whoami
   namespace: whoami-test
+  annotations:
+    cert-manager.io/cluster-issuer: internal-ca
 spec:
   ingressClassName: traefik
+  tls:
+    - hosts:
+        - test.BASE_DOMAIN
+      secretName: whoami-tls
   rules:
     - host: test.BASE_DOMAIN
       http:

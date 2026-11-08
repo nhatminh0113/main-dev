@@ -61,12 +61,12 @@ database:
 ingress:
   enabled: true
   className: traefik
-  # Public hostname, e.g. staging.<IP>.sslip.io. Required when ingress is enabled.
+  # Hostname, e.g. staging.taskapp.internal. Required when ingress is enabled.
   host: ""
   tls:
     enabled: true
-    # cert-manager ClusterIssuer (created by Terraform in Task 9)
-    clusterIssuer: letsencrypt-prod
+    # cert-manager ClusterIssuer backed by the internal root CA (Terraform, Task 9)
+    clusterIssuer: internal-ca
 
 # HTTP Basic Auth in front of the whole site (Traefik Middleware).
 # Secret with an htpasswd line under the key "users", created outside the chart:

@@ -23,7 +23,7 @@ postgres:
 
 ingress:
   tls:
-    clusterIssuer: letsencrypt-prod
+    clusterIssuer: internal-ca
 
 basicAuth:
   enabled: true

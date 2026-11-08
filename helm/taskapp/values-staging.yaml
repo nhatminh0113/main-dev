@@ -14,8 +14,9 @@ postgres:
 
 ingress:
   tls:
-    # Trusted certificate so the pipeline smoke test (curl) can verify TLS.
-    clusterIssuer: letsencrypt-prod
+    # Signed by the internal CA, which the runner host trusts (Ansible ca_trust),
+    # so the smoke test verifies TLS.
+    clusterIssuer: internal-ca
 
 basicAuth:
   enabled: true
