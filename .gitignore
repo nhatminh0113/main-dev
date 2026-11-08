@@ -59,6 +59,8 @@ override.tf.json
 *_override.tf
 *_override.tf.json
 .tflint.d/
+# Exported root CA certificate (per cluster, exported outside the repo)
+taskapp-ca.crt
 
 # ---------- Kubernetes ----------
 *.kubeconfig

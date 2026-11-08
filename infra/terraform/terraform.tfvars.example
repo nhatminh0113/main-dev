@@ -1,0 +1,4 @@
+# Copy to terraform.tfvars (git-ignored). Never commit the real file.
+base_domain = "taskapp.internal"
+
+# kubeconfig_path = "~/.kube/config-vps"
