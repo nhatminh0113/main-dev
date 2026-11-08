@@ -1,0 +1,34 @@
+---
+# Project settings shared by every host. Secrets never go here: see vault.yml.example.
+
+# ---------- common role ----------
+# Admin user for Ansible and SSH: key-only login, passwordless sudo.
+common_deploy_user: deploy
+# Public key read on the control node (WSL) and installed for the deploy user.
+common_deploy_ssh_public_key_file: "{{ lookup('ansible.builtin.env', 'HOME') }}/.ssh/id_ed25519.pub"
+common_timezone: Asia/Ho_Chi_Minh
+# Ubuntu's installer already created /swap.img; the role resizes it when the size differs.
+common_swap_file: /swap.img
+common_swap_size_mib: 2048
+
+# ---------- network role ----------
+# No public domain: these names resolve through /etc/hosts (VM) and the Windows
+# hosts file (dev machine) to the Host-only address.
+base_domain: taskapp.internal
+network_hosts_names:
+  - test
+  - staging
+  - app
+  - grafana
+# Name given to the Host-only adapter (matched by MAC, see host_vars.example/).
+network_hostonly_interface: enp0s8
+network_hostonly_address: 192.168.56.10/24
+# Also the k3s node IP (k3s role).
+network_hostonly_ip: "{{ network_hostonly_address.split('/')[0] }}"
+# ---------- security role ----------
+# Opened first, before UFW is enabled.
+security_ssh_port: 22
+# Traefik (k3s ingress) from Task 8 on.
+security_web_tcp_ports:
+  - 80
+  - 443

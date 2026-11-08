@@ -1,0 +1,10 @@
+---
+# k3s single-node cluster on the VM. Run after site.yml (deploy user, UFW enabled):
+#   ansible-playbook playbooks/k3s.yml
+# Then open the API tunnel with scripts/tunnel.sh start and use
+#   KUBECONFIG=~/.kube/config-vps kubectl get nodes
+- name: Single-node k3s server (pinned release, Traefik and local-path kept)
+  hosts: k3s
+  become: true
+  roles:
+    - role: k3s

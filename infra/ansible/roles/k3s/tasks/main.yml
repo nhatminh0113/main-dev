@@ -1,0 +1,135 @@
+---
+- name: Check that the node IP is configured on the VM
+  ansible.builtin.assert:
+    that:
+      - k3s_node_ip in ansible_facts['all_ipv4_addresses']
+    fail_msg: "{{ k3s_node_ip }} is not on the VM: run playbooks/site.yml (network role) first."
+    quiet: true
+# ---------- Firewall ----------
+# k3s docs (Ubuntu/Debian, UFW): pods and services must reach the host, otherwise
+# CoreDNS, Traefik and metrics-server cannot talk to the API server.
+# Port 6443 is deliberately NOT opened: the API is used through an SSH tunnel only.
+- name: Allow traffic from the pod and service networks
+  community.general.ufw:
+    rule: allow
+    from_ip: "{{ item.cidr }}"
+    comment: "{{ item.comment }}"
+  loop:
+    - { cidr: "{{ k3s_cluster_cidr }}", comment: k3s pods }
+    - { cidr: "{{ k3s_service_cidr }}", comment: k3s services }
+  loop_control:
+    label: "{{ item.cidr }}"
+
+# ---------- Configuration ----------
+# Written before the install script runs, so the first start already uses it.
+- name: Create the k3s configuration directory
+  ansible.builtin.file:
+    path: /etc/rancher/k3s
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Write the k3s server configuration
+  ansible.builtin.template:
+    src: config.yaml.j2
+    dest: /etc/rancher/k3s/config.yaml
+    owner: root
+    group: root
+    mode: "0600"
+  notify: Restart k3s
+
+# ---------- Install (pinned, script downloaded to a file and checked) ----------
+- name: Read the installed k3s version
+  ansible.builtin.command: /usr/local/bin/k3s --version
+  register: k3s_installed_version
+  changed_when: false
+  failed_when: false
+
+- name: Create the directory for the install script
+  ansible.builtin.file:
+    path: "{{ k3s_install_script_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0700"
+
+- name: Download the install script of the pinned release
+  ansible.builtin.get_url:
+    url: "{{ k3s_install_script_url }}"
+    dest: "{{ k3s_install_script_dir }}/install-{{ k3s_version }}.sh"
+    checksum: "sha256:{{ k3s_install_script_sha256 }}"
+    owner: root
+    group: root
+    mode: "0700"
+
+# Runs only when k3s is missing or reports another version. The script checks the
+# binary against sha256sum-<arch>.txt of the same release, enables and (re)starts
+# the k3s service.
+- name: Install k3s {{ k3s_version }}
+  ansible.builtin.command: "{{ k3s_install_script_dir }}/install-{{ k3s_version }}.sh"
+  environment:
+    INSTALL_K3S_VERSION: "{{ k3s_version }}"
+  when: k3s_version not in (k3s_installed_version.stdout | default(''))
+  register: k3s_install
+  changed_when: true
+
+- name: Enable and start the k3s service
+  ansible.builtin.systemd_service:
+    name: k3s
+    enabled: true
+    state: started
+
+- name: Apply a pending configuration restart
+  ansible.builtin.meta: flush_handlers
+
+# ---------- Wait for the node ----------
+- name: Wait for the admin kubeconfig
+  ansible.builtin.wait_for:
+    path: /etc/rancher/k3s/k3s.yaml
+    timeout: 120
+
+- name: Wait until every node reports Ready
+  ansible.builtin.command:
+    argv:
+      - /usr/local/bin/k3s
+      - kubectl
+      - get
+      - nodes
+      - -o
+      - 'jsonpath={range .items[*]}{.status.conditions[?(@.type=="Ready")].status}{"\n"}{end}'
+  register: k3s_nodes_ready
+  changed_when: false
+  retries: "{{ k3s_ready_retries }}"
+  delay: "{{ k3s_ready_delay }}"
+  until:
+    - k3s_nodes_ready.rc == 0
+    - k3s_nodes_ready.stdout_lines | length > 0
+    - k3s_nodes_ready.stdout_lines | reject('equalto', 'True') | list | length == 0
+
+# ---------- Kubeconfig for the control node ----------
+- name: Read the admin kubeconfig
+  ansible.builtin.slurp:
+    src: /etc/rancher/k3s/k3s.yaml
+  register: k3s_admin_kubeconfig
+  no_log: true
+
+- name: Create ~/.kube on the control node
+  ansible.builtin.file:
+    path: "{{ k3s_kubeconfig_local_path | dirname }}"
+    state: directory
+    mode: "0700"
+  delegate_to: localhost
+  become: false
+
+# The file holds the cluster-admin client key: never print it, never put it in the repo.
+- name: Save the kubeconfig on the control node (server = SSH tunnel endpoint)
+  ansible.builtin.copy:
+    content: >-
+      {{ k3s_admin_kubeconfig.content | b64decode
+         | regex_replace('(?m)(?<=server: ).*$', k3s_kubeconfig_server) }}
+    dest: "{{ k3s_kubeconfig_local_path }}"
+    mode: "0600"
+  delegate_to: localhost
+  become: false
+  no_log: true

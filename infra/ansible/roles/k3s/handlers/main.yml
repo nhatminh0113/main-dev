@@ -1,0 +1,7 @@
+---
+# Skipped when the install script ran in this play: it (re)starts k3s itself.
+- name: Restart k3s
+  ansible.builtin.systemd_service:
+    name: k3s
+    state: restarted
+  when: k3s_install is skipped
