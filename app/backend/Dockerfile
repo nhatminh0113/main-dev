@@ -19,6 +19,11 @@ ENV PATH="/opt/venv/bin:$PATH" \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 
+# Fixable HIGH CVEs in the base image: apt CVE-2026-109518 (3.0.4), zlib1g CVE-2026-85091 (deb13u1).
+# Remove the upgrade once the base image tag includes them.
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends --only-upgrade apt libapt-pkg7.0 zlib1g \
+ && rm -rf /var/lib/apt/lists/*
 RUN groupadd --system --gid 10001 app \
  && useradd --system --uid 10001 --gid app --no-create-home --shell /usr/sbin/nologin app
 
