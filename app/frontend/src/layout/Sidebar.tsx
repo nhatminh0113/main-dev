@@ -59,7 +59,7 @@ export function Sidebar() {
     <nav className={styles.sidebar} aria-label="Điều hướng chính">
       <div className={styles.brand}>
         <LogoMark />
-        <span className={styles.brandName}>Taskapp</span>
+        <span className={styles.brandName}>Taskapp DevOps</span>
       </div>
 
       <button type="button" className={styles.addTask} onClick={() => openQuickAdd()}>
