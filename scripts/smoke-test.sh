@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# End-to-end smoke test against a running deployment.
+# End-to-end smoke test against a running deployment (PR runner check).
 #
 #   scripts/smoke-test.sh http://localhost:8080
 #   SMOKE_AUTH=user:pass scripts/smoke-test.sh https://staging.<base_domain>   # behind Basic Auth
