@@ -2,3 +2,5 @@
 profile: production
 # Collections come from requirements.yml (installed beforehand), lint must not download them.
 offline: true
+exclude_paths:
+  - vault/

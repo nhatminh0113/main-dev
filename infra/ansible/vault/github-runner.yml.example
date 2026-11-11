@@ -1,0 +1,28 @@
+# Template for vault/github-runner.yml (Ansible Vault, gitignored: never commit the real
+# file). The github_runner role loads it only while the runner is not registered yet,
+# so no other playbook needs the vault password.
+#
+# The registration token (Settings > Actions > Runners > New self-hosted runner, the value
+# after --token) expires after 1 hour: encrypt it, run the playbook, delete the file.
+#
+# Once, in WSL, create the vault password file (random, mode 600, outside the repository):
+#   install -d -m 700 ~/.config/taskapp
+#   (umask 077; openssl rand -hex 32 > ~/.config/taskapp/vault-pass)
+#
+# Encrypt the token from the repository root (the prompt does not echo the value):
+#   read -rsp 'Runner token: ' T; echo
+#   printf 'vault_github_runner_token: "%s"\n' "$T" | ansible-vault encrypt \
+#     --vault-password-file ~/.config/taskapp/vault-pass \
+#     --output infra/ansible/vault/github-runner.yml
+#   unset T
+# Fallback, one encrypted variable pasted into a plain file:
+#   ansible-vault encrypt_string --vault-password-file ~/.config/taskapp/vault-pass \
+#     --stdin-name vault_github_runner_token
+#
+# Register (from infra/ansible, through scripts/ansible-wsl.sh or directly in WSL):
+#   ansible-playbook playbooks/github-runner.yml \
+#     --vault-password-file ~/.config/taskapp/vault-pass
+# Then delete vault/github-runner.yml: the token is single use.
+#
+# Plain-text shape of the file before encryption:
+# vault_github_runner_token: "<registration token>"

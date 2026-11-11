@@ -1,0 +1,352 @@
+---
+- name: Check that the VM is x86_64 (only the x64 runner archive is pinned)
+  ansible.builtin.assert:
+    that:
+      - ansible_facts['architecture'] == 'x86_64'
+    fail_msg: "Unsupported architecture {{ ansible_facts['architecture'] }}: the pinned downloads are linux/amd64."
+    quiet: true
+# ---------- Packages ----------
+- name: Install the packages used by the runner and the deploy jobs
+  ansible.builtin.apt:
+    name: "{{ github_runner_packages }}"
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+# ---------- Runner user (no sudo, no login shell) ----------
+- name: Create the runner group
+  ansible.builtin.group:
+    name: "{{ github_runner_user }}"
+    system: true
+- name: Create the runner user
+  ansible.builtin.user:
+    name: "{{ github_runner_user }}"
+    system: true
+    group: "{{ github_runner_user }}"
+    groups: ""
+    append: false
+    shell: /usr/sbin/nologin
+    home: "{{ github_runner_home }}"
+    create_home: true
+    password_lock: true
+- name: Restrict the home directory of the runner user
+  ansible.builtin.file:
+    path: "{{ github_runner_home }}"
+    state: directory
+    owner: "{{ github_runner_user }}"
+    group: "{{ github_runner_user }}"
+    mode: "0750"
+- name: Check that the runner user has no sudo rights
+  ansible.builtin.command:
+    argv:
+      - sudo
+      - -l
+      - -U
+      - "{{ github_runner_user }}"
+  register: github_runner_sudo_check
+  changed_when: false
+  failed_when: "'is not allowed to run sudo' not in github_runner_sudo_check.stdout"
+  check_mode: false
+# ---------- Root-owned tools (pinned, checksum verified) ----------
+- name: Create the tool, hook and download directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  loop:
+    - "{{ github_runner_lib_dir }}"
+    - "{{ github_runner_lib_dir }}/bin"
+    - "{{ github_runner_lib_dir }}/hooks"
+    - "{{ github_runner_dist_dir }}"
+    - "{{ github_runner_dist_dir }}/helm-{{ github_runner_helm_version }}"
+- name: Download kubectl {{ github_runner_kubectl_version }}
+  ansible.builtin.get_url:
+    url: "{{ github_runner_kubectl_url }}"
+    dest: "{{ github_runner_lib_dir }}/bin/kubectl"
+    checksum: "sha256:{{ github_runner_kubectl_sha256 }}"
+    owner: root
+    group: root
+    mode: "0755"
+- name: Download the Helm archive
+  ansible.builtin.get_url:
+    url: "{{ github_runner_helm_url }}"
+    dest: "{{ github_runner_dist_dir }}/helm-{{ github_runner_helm_version }}-linux-amd64.tar.gz"
+    checksum: "sha256:{{ github_runner_helm_sha256 }}"
+    owner: root
+    group: root
+    mode: "0644"
+- name: Extract the Helm archive
+  ansible.builtin.unarchive:
+    src: "{{ github_runner_dist_dir }}/helm-{{ github_runner_helm_version }}-linux-amd64.tar.gz"
+    dest: "{{ github_runner_dist_dir }}/helm-{{ github_runner_helm_version }}"
+    remote_src: true
+    owner: root
+    group: root
+    creates: "{{ github_runner_dist_dir }}/helm-{{ github_runner_helm_version }}/linux-amd64/helm"
+- name: Install the helm binary
+  ansible.builtin.copy:
+    src: "{{ github_runner_dist_dir }}/helm-{{ github_runner_helm_version }}/linux-amd64/helm"
+    dest: "{{ github_runner_lib_dir }}/bin/helm"
+    remote_src: true
+    owner: root
+    group: root
+    mode: "0755"
+- name: Read the installed kubectl version
+  ansible.builtin.command:
+    argv:
+      - "{{ github_runner_lib_dir }}/bin/kubectl"
+      - version
+      - --client
+      - -o
+      - json
+  register: github_runner_kubectl_check
+  changed_when: false
+  failed_when: (github_runner_kubectl_check.stdout | from_json).clientVersion.gitVersion != github_runner_kubectl_version
+  check_mode: false
+- name: Read the installed Helm version
+  ansible.builtin.command:
+    argv:
+      - "{{ github_runner_lib_dir }}/bin/helm"
+      - version
+      - --short
+  register: github_runner_helm_check
+  changed_when: false
+  failed_when: not github_runner_helm_check.stdout.startswith(github_runner_helm_version)
+  check_mode: false
+# ---------- Pre-job hook (server-side guard, root-owned) ----------
+- name: Install the pre-job hook
+  ansible.builtin.copy:
+    src: job-started.sh
+    dest: "{{ github_runner_lib_dir }}/hooks/job-started.sh"
+    owner: root
+    group: root
+    mode: "0755"
+- name: Write the pre-job hook configuration
+  ansible.builtin.template:
+    src: job-started.conf.j2
+    dest: "{{ github_runner_lib_dir }}/hooks/job-started.conf"
+    owner: root
+    group: root
+    mode: "0644"
+# ---------- Runner files (pinned install-time version) ----------
+- name: Download the runner archive
+  ansible.builtin.get_url:
+    url: "{{ github_runner_url }}"
+    dest: "{{ github_runner_dist_dir }}/actions-runner-linux-x64-{{ github_runner_version }}.tar.gz"
+    checksum: "sha256:{{ github_runner_sha256 }}"
+    owner: root
+    group: root
+    mode: "0644"
+- name: Create the runner directory
+  ansible.builtin.file:
+    path: "{{ github_runner_dir }}"
+    state: directory
+    owner: "{{ github_runner_user }}"
+    group: "{{ github_runner_user }}"
+    mode: "0750"
+# Extracted once. A runner that updated itself is never replaced by the pinned version.
+- name: Extract the runner
+  ansible.builtin.unarchive:
+    src: "{{ github_runner_dist_dir }}/actions-runner-linux-x64-{{ github_runner_version }}.tar.gz"
+    dest: "{{ github_runner_dir }}"
+    remote_src: true
+    owner: "{{ github_runner_user }}"
+    group: "{{ github_runner_user }}"
+    creates: "{{ github_runner_dir }}/config.sh"
+# ---------- Registration (only while .runner is missing) ----------
+- name: Check whether the runner is registered
+  ansible.builtin.stat:
+    path: "{{ github_runner_dir }}/.runner"
+    get_checksum: false
+  register: github_runner_registered
+- name: Register the runner with GitHub
+  when: not github_runner_registered.stat.exists
+  block:
+    - name: Check that the vault file with the registration token exists
+      ansible.builtin.stat:
+        path: "{{ github_runner_vault_file }}"
+        get_checksum: false
+      register: github_runner_vault_stat
+      delegate_to: localhost
+      become: false
+    - name: Stop when the registration token is missing
+      ansible.builtin.assert:
+        that:
+          - github_runner_vault_stat.stat.exists
+        fail_msg: >-
+          Runner not registered and {{ github_runner_vault_file | basename }} not found.
+          Copy the registration token (Settings > Actions > Runners > New self-hosted runner),
+          encrypt it right away (it expires after 1 hour) and run the playbook again with
+          --vault-password-file. Commands: infra/ansible/vault/github-runner.yml.example.
+        quiet: true
+    - name: Load the registration token
+      ansible.builtin.include_vars:
+        file: "{{ github_runner_vault_file }}"
+      no_log: true
+    - name: Check that the vault file defines the token
+      ansible.builtin.assert:
+        that:
+          - vault_github_runner_token | default('') | length > 0
+        fail_msg: "vault_github_runner_token is missing or empty in {{ github_runner_vault_file | basename }}."
+        quiet: true
+    # The token never appears on a command line or in sudo's log: it is written to a 0600 file
+    # owned by the runner user, sourced by bash inside config.sh's process, and removed afterwards.
+    - name: Register with a short-lived token file
+      block:
+        - name: Write the registration token file
+          ansible.builtin.copy:
+            content: "ACTIONS_RUNNER_INPUT_TOKEN={{ vault_github_runner_token | quote }}\n"
+            dest: "{{ github_runner_dir }}/.registration-token"
+            owner: "{{ github_runner_user }}"
+            group: "{{ github_runner_user }}"
+            mode: "0600"
+          no_log: true
+        - name: Run config.sh as the runner user
+          ansible.builtin.command:
+            argv:
+              - bash
+              - -c
+              - 'set -a; . "$1"; set +a; shift; exec ./config.sh "$@"'
+              - _
+              - "{{ github_runner_dir }}/.registration-token"
+              - --unattended
+              - --url
+              - "https://github.com/{{ github_runner_repository }}"
+              - --name
+              - "{{ github_runner_name }}"
+              - --labels
+              - "{{ github_runner_labels | join(',') }}"
+              - --work
+              - _work
+              - --replace
+            chdir: "{{ github_runner_dir }}"
+            creates: "{{ github_runner_dir }}/.runner"
+          become: true
+          become_user: "{{ github_runner_user }}"
+          no_log: true
+      always:
+        - name: Remove the registration token file
+          ansible.builtin.file:
+            path: "{{ github_runner_dir }}/.registration-token"
+            state: absent
+# Written after registration: config.sh creates both files.
+- name: Set the pre-job hook in the runner environment
+  ansible.builtin.template:
+    src: runner.env.j2
+    dest: "{{ github_runner_dir }}/.env"
+    owner: "{{ github_runner_user }}"
+    group: "{{ github_runner_user }}"
+    mode: "0644"
+  notify: Restart the runner
+- name: Put the pinned kubectl and helm first in the job PATH
+  ansible.builtin.template:
+    src: runner.path.j2
+    dest: "{{ github_runner_dir }}/.path"
+    owner: "{{ github_runner_user }}"
+    group: "{{ github_runner_user }}"
+    mode: "0644"
+  notify: Restart the runner
+# ---------- Kubeconfig of the deployer ServiceAccount ----------
+- name: Check that the deployer kubeconfig exists on the control node
+  ansible.builtin.stat:
+    path: "{{ github_runner_kubeconfig_src }}"
+    get_checksum: false
+  register: github_runner_kubeconfig_stat
+  delegate_to: localhost
+  become: false
+- name: Stop when the deployer kubeconfig is missing
+  ansible.builtin.assert:
+    that:
+      - github_runner_kubeconfig_stat.stat.exists
+    fail_msg: >-
+      {{ github_runner_kubeconfig_src }} not found. With the API tunnel open, run in
+      infra/terraform: (umask 077; terraform output -raw deployer_kubeconfig > {{ github_runner_kubeconfig_src }})
+    quiet: true
+- name: Create the kubeconfig directory of the runner user
+  ansible.builtin.file:
+    path: "{{ github_runner_home }}/.kube"
+    state: directory
+    owner: "{{ github_runner_user }}"
+    group: "{{ github_runner_user }}"
+    mode: "0700"
+- name: Install the deployer kubeconfig
+  ansible.builtin.copy:
+    src: "{{ github_runner_kubeconfig_src }}"
+    dest: "{{ github_runner_home }}/.kube/config"
+    owner: "{{ github_runner_user }}"
+    group: "{{ github_runner_user }}"
+    mode: "0600"
+  no_log: true
+  diff: false
+- name: Check that the deployer can deploy in staging
+  ansible.builtin.command:
+    argv:
+      - "{{ github_runner_lib_dir }}/bin/kubectl"
+      - --kubeconfig
+      - "{{ github_runner_home }}/.kube/config"
+      - auth
+      - can-i
+      - create
+      - deployments.apps
+      - -n
+      - staging
+  become: true
+  become_user: "{{ github_runner_user }}"
+  register: github_runner_can_deploy
+  changed_when: false
+  failed_when: github_runner_can_deploy.stdout | trim != 'yes'
+  check_mode: false
+- name: Check that the deployer cannot deploy in kube-system
+  ansible.builtin.command:
+    argv:
+      - "{{ github_runner_lib_dir }}/bin/kubectl"
+      - --kubeconfig
+      - "{{ github_runner_home }}/.kube/config"
+      - auth
+      - can-i
+      - create
+      - deployments.apps
+      - -n
+      - kube-system
+  become: true
+  become_user: "{{ github_runner_user }}"
+  register: github_runner_cannot_deploy
+  changed_when: false
+  failed_when: github_runner_cannot_deploy.stdout | trim != 'no'
+  check_mode: false
+# ---------- systemd service (own unit, sandboxed by a drop-in) ----------
+- name: Install the runner service unit
+  ansible.builtin.template:
+    src: actions-runner.service.j2
+    dest: "/etc/systemd/system/{{ github_runner_service }}.service"
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - Reload systemd
+    - Restart the runner
+- name: Create the drop-in directory
+  ansible.builtin.file:
+    path: "/etc/systemd/system/{{ github_runner_service }}.service.d"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+- name: Install the sandbox drop-in
+  ansible.builtin.template:
+    src: 10-hardening.conf.j2
+    dest: "/etc/systemd/system/{{ github_runner_service }}.service.d/10-hardening.conf"
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - Reload systemd
+    - Restart the runner
+- name: Apply pending unit and environment changes
+  ansible.builtin.meta: flush_handlers
+- name: Enable and start the runner service
+  ansible.builtin.systemd_service:
+    name: "{{ github_runner_service }}"
+    enabled: true
+    state: started

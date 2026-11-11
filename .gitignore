@@ -76,7 +76,9 @@ infra/ansible/inventory/host_vars/
 .vault_pass
 .vault_pass.txt
 vault_pass*
-# Decrypted vault files (keep only the encrypted vault.yml in git)
+# Real vault files (runner registration token) stay local; commit only *.yml.example
+infra/ansible/vault/*.yml
+# Decrypted vault files
 *.decrypted.yml
 *.dec.yml
 vault.plain.yml

@@ -1,5 +1,5 @@
 ---
-# Project settings shared by every host. Secrets never go here: see vault.yml.example.
+# Project settings shared by every host. Secrets never go here: see ../../vault/github-runner.yml.example.
 
 # ---------- common role ----------
 # Admin user for Ansible and SSH: key-only login, passwordless sudo.
