@@ -21,8 +21,10 @@ permissions:
   contents: read
 
 concurrency:
-  group: ci-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  group: ci-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  # Pushes are never cancelled: a second push must not abort a running helm upgrade
+  # (it could leave the release in pending-upgrade). Pull requests and manual runs still cancel stale runs.
+  cancel-in-progress: ${{ github.event_name != 'push' }}
 
 env:
   REGISTRY: ghcr.io
@@ -140,6 +142,9 @@ jobs:
       - name: Lint and validate (staging + prod values)
         run: bash scripts/helm-check.sh
 
+      - name: Test the deploy script (stubs)
+        run: bash scripts/tests/test_deploy_app.sh
+
   migrations:
     name: Migration safety (expand-only upgrade)
     runs-on: ubuntu-latest
@@ -183,6 +188,9 @@ jobs:
       - name: Install collections (pinned in requirements.yml)
         run: ansible-galaxy collection install -r requirements.yml
 
+      - name: Test the runner job-started hook
+        run: bash roles/github_runner/tests/test_job_started_hook.sh
+
       - name: Lint (ansible-lint, production profile)
         run: ansible-lint
 
@@ -190,7 +198,7 @@ jobs:
       - name: Syntax check
         run: >-
           ansible-playbook -i inventory/hosts.example.yml --syntax-check
-          playbooks/site.yml playbooks/k3s.yml playbooks/ca-trust.yml
+          playbooks/site.yml playbooks/k3s.yml playbooks/ca-trust.yml playbooks/github-runner.yml
 
   # Static checks only: CI has no access to the cluster (no plan/apply here by design).
   terraform:
@@ -399,3 +407,94 @@ jobs:
           fi
           echo "${COMPONENT}_digest=${digest}" >> "$GITHUB_OUTPUT"
           echo "Published ${REF} @ ${digest}" >> "$GITHUB_STEP_SUMMARY"
+
+  # Self-hosted job on the VM (label vps). Reachable ONLY from a push to develop: never from
+  # pull_request, pull_request_target (not a trigger here) or workflow_dispatch. Defense in depth:
+  # the runner's pre-job hook rejects any other event/ref/repository, the Environment "staging"
+  # only allows the develop branch, and outside collaborators need approval to run workflows.
+  # Secrets are passed through step env only and are never echoed.
+  deploy-staging:
+    name: Deploy staging (helm + smoke test)
+    needs: image
+    if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+    runs-on: [self-hosted, vps]
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    environment:
+      name: staging
+      url: https://staging.${{ vars.BASE_DOMAIN }}
+    concurrency:
+      group: deploy-staging
+      cancel-in-progress: false
+    env:
+      NAMESPACE: staging
+      BASE_DOMAIN: ${{ vars.BASE_DOMAIN }}
+      HOST: staging.${{ vars.BASE_DOMAIN }}
+      IMAGE_TAG: ${{ needs.image.outputs.image_tag }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Check deploy inputs
+        run: |
+          set -euo pipefail
+          if [[ -z "${BASE_DOMAIN}" ]]; then
+            echo "::error::repository variable BASE_DOMAIN is not set"
+            exit 1
+          fi
+          if [[ "${IMAGE_TAG}" != "sha-${GITHUB_SHA::7}" ]]; then
+            echo "::error::image tag ${IMAGE_TAG} does not match this commit (sha-${GITHUB_SHA::7})"
+            exit 1
+          fi
+          echo "Deploying ${IMAGE_TAG} to https://${HOST}"
+
+      - name: Create Secrets and helm upgrade (rollback on failure)
+        env:
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          BASIC_AUTH_USERNAME: ${{ secrets.BASIC_AUTH_USERNAME }}
+          BASIC_AUTH_PASSWORD: ${{ secrets.BASIC_AUTH_PASSWORD }}
+        run: bash scripts/deploy-app.sh "${NAMESPACE}" helm/taskapp/values-staging.yaml "${HOST}"
+
+      # Without credentials the API must answer 401. The first install may still serve Traefik's
+      # default certificate for a few seconds (curl exit 60), so retry before failing.
+      - name: Basic Auth is enforced (401 without credentials)
+        run: |
+          set -euo pipefail
+          code=000
+          for attempt in 1 2 3 4 5 6 7 8 9 10; do
+            code="$(curl --silent --output /dev/null --max-time 10 --write-out '%{http_code}' "https://${HOST}/api/healthz" || true)"
+            [[ "${code}" == "401" ]] && break
+            echo "attempt ${attempt}/10: HTTP ${code}, retrying in 3 s"
+            sleep 3
+          done
+          if [[ "${code}" != "401" ]]; then
+            echo "::error::https://${HOST}/api/healthz without credentials returned HTTP ${code}, expected 401"
+            exit 1
+          fi
+          echo "HTTP 401 without credentials"
+
+      - name: Smoke test
+        env:
+          SMOKE_AUTH: ${{ secrets.BASIC_AUTH_USERNAME }}:${{ secrets.BASIC_AUTH_PASSWORD }}
+          SMOKE_RETRIES: "20"
+        run: bash scripts/smoke-test.sh "https://${HOST}"
+
+      - name: Summary
+        run: |
+          set -euo pipefail
+          revision="$(helm -n "${NAMESPACE}" history taskapp --max 1 | awk 'NR==2 {print $1}')"
+          {
+            echo "### Staging deployed"
+            echo "- Image tag: \`${IMAGE_TAG}\`"
+            echo "- URL: https://${HOST}"
+            echo "- Helm revision: ${revision}"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Diagnostics on failure
+        if: failure()
+        run: |
+          kubectl -n "${NAMESPACE}" get pods -o wide || true
+          kubectl -n "${NAMESPACE}" get events --sort-by=.lastTimestamp | tail -n 30 || true
+          helm -n "${NAMESPACE}" history taskapp --max 5 || true
