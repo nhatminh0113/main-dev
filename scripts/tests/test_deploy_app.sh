@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Tests for scripts/deploy-app.sh with stub kubectl, helm and htpasswd (no cluster needed).
+# Tests for scripts/deploy-app.sh with stub kubectl and helm (no cluster needed).
 #   bash scripts/tests/test_deploy_app.sh
 set -euo pipefail
 
@@ -20,7 +20,6 @@ if [[ " $* " == *" create secret generic "* ]]; then
       --from-file=*)
         spec="${arg#--from-file=}"; key="${spec%%=*}"; path="${spec#*=}"
         echo "secret-file key=${key} bytes=$(wc -c < "${path}") sha256=$(sha256sum < "${path}" | cut -d' ' -f1)" >> "${STUB_LOG}"
-        if [[ "${key}" == "users" ]]; then echo "secret-users $(cat "${path}")" >> "${STUB_LOG}"; fi
         ;;
     esac
   done
@@ -35,13 +34,6 @@ cat > "${work}/bin/helm" <<'STUB'
 echo "helm $*" >> "${STUB_LOG}"
 exit "${STUB_HELM_EXIT:-0}"
 STUB
-cat > "${work}/bin/htpasswd" <<'STUB'
-#!/usr/bin/env bash
-echo "htpasswd $*" >> "${STUB_LOG}"
-pw="$(cat)"
-echo "htpasswd-stdin-length ${#pw}" >> "${STUB_LOG}"
-printf '%s:$2y$05$stubstubstub\n\n' "${@: -1}"
-STUB
 chmod +x "${work}/bin/"*
 
 # --- harness -----------------------------------------------------------------------------------
@@ -51,7 +43,6 @@ out=""
 rc=0
 log="${work}/stub.log"
 db_pw="0123456789abcdef0123456789abcdef0123456789abcdef"
-ba_pw="Sup3r-secret-basic-auth-pw"
 
 ok() { printf 'ok   %s\n' "$1"; pass=$((pass + 1)); }
 bad() { printf 'FAIL %s\n' "$1"; fail=$((fail + 1)); }
@@ -65,7 +56,6 @@ run() {
   local -a envs=(
     "PATH=${work}/bin:${PATH}" "RUNNER_TEMP=${work}/runner-temp" "STUB_LOG=${log}"
     "IMAGE_TAG=sha-abc1234" "DB_PASSWORD=${db_pw}"
-    "BASIC_AUTH_USERNAME=smoke-user" "BASIC_AUTH_PASSWORD=${ba_pw}"
   )
   while [[ $# -gt 0 && "$1" != "--" ]]; do envs+=("$1"); shift; done
   shift
@@ -90,20 +80,11 @@ check "helm argv is exact" log_has "${expected}"
 check "helm argv is the only helm upgrade line" test "$(grep -c '^helm upgrade' "${log}")" -eq 1
 want_sha="$(printf '%s' "${db_pw}" | sha256sum | cut -d' ' -f1)"
 check "password file has no trailing newline" log_has "secret-file key=password bytes=${#db_pw} sha256=${want_sha}"
-# shellcheck disable=SC2016 # literal bcrypt prefix
-check "users is one bcrypt line for the user" log_has 'secret-users smoke-user:$2y$'
-check "users file is one line" test "$(grep -c '^secret-users ' "${log}")" -eq 1
-check "both secrets applied" test "$(grep -c '^apply bytes=' "${log}")" -eq 2
-# shellcheck disable=SC2016 # the bash -c bodies expand their own positional parameters
-check "secrets named taskapp-db and taskapp-basic-auth" \
-  bash -c 'grep -q "create secret generic taskapp-db " "$1" && grep -q "create secret generic taskapp-basic-auth " "$1"' _ "${log}"
-# shellcheck disable=SC2016 # the bash -c bodies expand their own positional parameters
-check "htpasswd got the password on stdin only" \
-  bash -c 'grep -q "^htpasswd -niB smoke-user$" "$1" && grep -q "^htpasswd-stdin-length ${2}$" "$1"' _ "${log}" "${#ba_pw}"
+check "only the DB secret is applied" test "$(grep -c '^apply bytes=' "${log}")" -eq 1
+check "secret named taskapp-db" log_has "create secret generic taskapp-db "
+check "no Basic Auth secret or htpasswd call" log_lacks "basic-auth"
 check "DB password not in stub log" log_lacks "${db_pw}"
-check "Basic Auth password not in stub log" log_lacks "${ba_pw}"
 check "DB password not in output" out_lacks "${db_pw}"
-check "Basic Auth password not in output" out_lacks "${ba_pw}"
 check "no deploy dir left behind" no_temp_left
 
 # --- 2-7. rejected input -----------------------------------------------------------------------
@@ -116,10 +97,6 @@ check "non-hex DB_PASSWORD fails" test "${rc}" -ne 0
 check "non-hex DB_PASSWORD: value not echoed" out_lacks 'not-hex!'
 check "non-hex DB_PASSWORD: kubectl not called" no_kubectl
 
-run BASIC_AUTH_PASSWORD= -- "${args_ok[@]}"
-check "empty BASIC_AUTH_PASSWORD fails" test "${rc}" -ne 0
-check "empty BASIC_AUTH_PASSWORD: kubectl not called" no_kubectl
-
 run -- kube-system helm/taskapp/values-staging.yaml staging.taskapp.internal
 check "namespace kube-system fails" test "${rc}" -ne 0
 check "namespace kube-system: nothing called" no_kubectl
@@ -127,10 +104,6 @@ check "namespace kube-system: nothing called" no_kubectl
 run -- staging helm/taskapp/values-staging.yaml ""
 check "empty host fails" test "${rc}" -ne 0
 check "empty host: helm not called" no_helm
-
-run BASIC_AUTH_USERNAME='a:b' -- "${args_ok[@]}"
-check "username with colon fails" test "${rc}" -ne 0
-check "username with colon: kubectl not called" no_kubectl
 
 run -- staging
 check "wrong argument count fails" test "${rc}" -ne 0

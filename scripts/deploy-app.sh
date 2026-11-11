@@ -7,12 +7,10 @@
 # Required environment (never passed on the command line, never printed):
 #   IMAGE_TAG            image tag for both components, sha-<7 hex>
 #   DB_PASSWORD          PostgreSQL password, hex only (it is placed in DATABASE_URL), e.g. openssl rand -hex 32
-#   BASIC_AUTH_USERNAME  Basic Auth user for the Ingress
-#   BASIC_AUTH_PASSWORD  Basic Auth password (use a long random value)
 # Optional: RELEASE (taskapp), CHART (./helm/taskapp), HELM_TIMEOUT (5m).
 #
-# Secrets taskapp-db (key password) and taskapp-basic-auth (key users, htpasswd bcrypt line)
-# are written to a private temp dir, loaded with --from-file and applied; the dir is removed on exit.
+# Secret taskapp-db (key password) is written to a private temp dir, loaded with --from-file and
+# applied; the dir is removed on exit.
 # Helm 4: --rollback-on-failure replaces --atomic. Exit code 2 means bad input.
 set -euo pipefail
 
@@ -35,12 +33,8 @@ helm_timeout="${HELM_TIMEOUT:-5m}"
 [[ "${IMAGE_TAG:-}" =~ ^sha-[0-9a-f]{7}$ ]] || bad "IMAGE_TAG must match sha-<7 hex chars>"
 [[ "${DB_PASSWORD:-}" =~ ^[0-9A-Fa-f]{32,}$ ]] \
   || bad "DB_PASSWORD must be at least 32 hex characters (openssl rand -hex 32)"
-[[ "${BASIC_AUTH_USERNAME:-}" =~ ^[A-Za-z0-9._-]{1,64}$ ]] \
-  || bad "BASIC_AUTH_USERNAME must be 1-64 characters from A-Z a-z 0-9 . _ -"
-[[ -n "${BASIC_AUTH_PASSWORD:-}" && "${BASIC_AUTH_PASSWORD}" != *$'\n'* ]] \
-  || bad "BASIC_AUTH_PASSWORD must be set and must not contain a newline"
 
-for tool in kubectl helm htpasswd; do
+for tool in kubectl helm; do
   command -v "${tool}" >/dev/null 2>&1 || bad "${tool} not found in PATH"
 done
 
@@ -51,20 +45,11 @@ trap 'rm -rf "${secret_dir}"' EXIT
 # printf is a shell builtin: the values do not appear in any process argument list.
 printf '%s' "${DB_PASSWORD}" > "${secret_dir}/password"
 
-# bcrypt hash, password read from stdin; -n prints to stdout; blank lines removed.
-users="$(printf '%s\n' "${BASIC_AUTH_PASSWORD}" | htpasswd -niB "${BASIC_AUTH_USERNAME}" | sed '/^[[:space:]]*$/d')"
-# shellcheck disable=SC2016 # '$2' and '$' are the literal bcrypt prefix
-if [[ "${users}" == *$'\n'* || "${users}" != "${BASIC_AUTH_USERNAME}:"'$2'[aby]'$'* ]]; then
-  bad "htpasswd did not return a single bcrypt line"
-fi
-printf '%s\n' "${users}" > "${secret_dir}/users"
-
 apply_secret() {  # apply_secret <name> <key> <file>
   kubectl -n "${namespace}" create secret generic "$1" --from-file="$2=$3" \
     --dry-run=client -o yaml | kubectl -n "${namespace}" apply -f -
 }
 apply_secret taskapp-db password "${secret_dir}/password"
-apply_secret taskapp-basic-auth users "${secret_dir}/users"
 
 helm upgrade --install "${release}" "${chart}" \
   -n "${namespace}" \

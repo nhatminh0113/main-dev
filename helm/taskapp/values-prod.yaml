@@ -25,5 +25,7 @@ ingress:
   tls:
     clusterIssuer: internal-ca
 
+# The app is reachable only from the dev machine (internal network), so no Basic Auth.
+# The chart keeps the feature: set enabled=true and create the Secret to reuse it.
 basicAuth:
-  enabled: true
+  enabled: false

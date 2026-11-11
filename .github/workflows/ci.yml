@@ -453,31 +453,10 @@ jobs:
       - name: Create Secrets and helm upgrade (rollback on failure)
         env:
           DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
-          BASIC_AUTH_USERNAME: ${{ secrets.BASIC_AUTH_USERNAME }}
-          BASIC_AUTH_PASSWORD: ${{ secrets.BASIC_AUTH_PASSWORD }}
         run: bash scripts/deploy-app.sh "${NAMESPACE}" helm/taskapp/values-staging.yaml "${HOST}"
-
-      # Without credentials the API must answer 401. The first install may still serve Traefik's
-      # default certificate for a few seconds (curl exit 60), so retry before failing.
-      - name: Basic Auth is enforced (401 without credentials)
-        run: |
-          set -euo pipefail
-          code=000
-          for attempt in 1 2 3 4 5 6 7 8 9 10; do
-            code="$(curl --silent --output /dev/null --max-time 10 --write-out '%{http_code}' "https://${HOST}/api/healthz" || true)"
-            [[ "${code}" == "401" ]] && break
-            echo "attempt ${attempt}/10: HTTP ${code}, retrying in 3 s"
-            sleep 3
-          done
-          if [[ "${code}" != "401" ]]; then
-            echo "::error::https://${HOST}/api/healthz without credentials returned HTTP ${code}, expected 401"
-            exit 1
-          fi
-          echo "HTTP 401 without credentials"
 
       - name: Smoke test
         env:
-          SMOKE_AUTH: ${{ secrets.BASIC_AUTH_USERNAME }}:${{ secrets.BASIC_AUTH_PASSWORD }}
           SMOKE_RETRIES: "20"
         run: bash scripts/smoke-test.sh "https://${HOST}"
 

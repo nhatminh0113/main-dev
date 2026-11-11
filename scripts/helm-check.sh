@@ -34,7 +34,7 @@ for env in staging prod; do
 
   echo "==> ${env}: kubeconform (as deployed, plus monitoring + network policies, plus no worker)"
   for extra in "" \
-    "--set serviceMonitor.enabled=true --set networkPolicy.enabled=true" \
+    "--set serviceMonitor.enabled=true --set networkPolicy.enabled=true --set basicAuth.enabled=true" \
     "--set worker.enabled=false --set serviceMonitor.enabled=true --set networkPolicy.enabled=true"; do
     # shellcheck disable=SC2086  # $extra is intentionally word-split
     helm template taskapp "${CHART}" -n "${env}" -f "${CHART}/values-${env}.yaml" \
@@ -133,6 +133,11 @@ for env in staging prod; do
       --set image.tag="${TAG}" --set ingress.host="${env}.taskapp.internal" \
       | render_doc Ingress taskapp)" \
     'cert-manager.io/cluster-issuer: "internal-ca"'
+  # Basic Auth is off in both environments (the chart keeps the feature, see the variant above).
+  plain="$(helm template taskapp "${CHART}" -n "${env}" -f "${CHART}/values-${env}.yaml" \
+    --set image.tag="${TAG}" --set ingress.host="${env}.taskapp.internal")"
+  expect_not_in "${env} renders no Basic Auth Middleware" "${plain}" "kind: Middleware"
+  expect_not_in "${env} Ingress has no middleware annotation" "${plain}" "router.middlewares"
 done
 
 no_worker="$(helm template taskapp "${CHART}" -n prod -f "${CHART}/values-prod.yaml" \
