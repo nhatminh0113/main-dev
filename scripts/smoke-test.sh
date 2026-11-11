@@ -76,7 +76,16 @@ until "${CURL[@]}" -o /dev/null "${BASE_URL}/api/healthz" 2>/dev/null; do
 done
 log "healthz OK"
 
-"${CURL[@]}" "${BASE_URL}/api/readyz" | grep -q '"ready"' || fail "readyz: database not ready"
+# Readiness (database reachable) can lag behind liveness right after a rollout, so retry it too.
+attempt=1
+until "${CURL[@]}" "${BASE_URL}/api/readyz" 2>/dev/null | grep -q '"ready"'; do
+  if (( attempt >= RETRIES )); then
+    fail "readyz: database not ready after ${RETRIES} attempts"
+  fi
+  log "waiting for database (attempt ${attempt}/${RETRIES})..."
+  attempt=$((attempt + 1))
+  sleep "${DELAY}"
+done
 log "readyz OK"
 
 # 1b. The API echoes a valid X-Request-ID (used to correlate JSON log lines).
