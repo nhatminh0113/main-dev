@@ -477,3 +477,76 @@ jobs:
           kubectl -n "${NAMESPACE}" get pods -o wide || true
           kubectl -n "${NAMESPACE}" get events --sort-by=.lastTimestamp | tail -n 30 || true
           helm -n "${NAMESPACE}" history taskapp --max 5 || true
+
+  # Self-hosted job on the VM (label vps). Reachable ONLY from a push to main (never from
+  # pull_request or workflow_dispatch). The Environment "prod" has a required reviewer and only
+  # allows the main branch; the runner pre-job hook also rejects any other event/ref/repository.
+  # The image is the one promoted from develop (same digest), see the image job.
+  deploy-prod:
+    name: Deploy prod (helm + smoke test)
+    needs: image
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: [self-hosted, vps]
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    environment:
+      name: prod
+      url: https://app.${{ vars.BASE_DOMAIN }}
+    concurrency:
+      group: deploy-prod
+      cancel-in-progress: false
+    env:
+      NAMESPACE: prod
+      BASE_DOMAIN: ${{ vars.BASE_DOMAIN }}
+      HOST: app.${{ vars.BASE_DOMAIN }}
+      IMAGE_TAG: ${{ needs.image.outputs.image_tag }}
+      BACKEND_DIGEST: ${{ needs.image.outputs.backend_digest }}
+      FRONTEND_DIGEST: ${{ needs.image.outputs.frontend_digest }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Check deploy inputs
+        run: |
+          set -euo pipefail
+          if [[ -z "${BASE_DOMAIN}" ]]; then
+            echo "::error::repository variable BASE_DOMAIN is not set"
+            exit 1
+          fi
+          if [[ "${IMAGE_TAG}" != "sha-${GITHUB_SHA::7}" ]]; then
+            echo "::error::image tag ${IMAGE_TAG} does not match this commit (sha-${GITHUB_SHA::7})"
+            exit 1
+          fi
+          echo "Deploying ${IMAGE_TAG} to https://${HOST}"
+
+      - name: Create Secrets and helm upgrade (rollback on failure)
+        env:
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+        run: bash scripts/deploy-app.sh "${NAMESPACE}" helm/taskapp/values-prod.yaml "${HOST}"
+
+      - name: Smoke test
+        env:
+          SMOKE_RETRIES: "20"
+        run: bash scripts/smoke-test.sh "https://${HOST}"
+
+      - name: Summary
+        run: |
+          set -euo pipefail
+          revision="$(helm -n "${NAMESPACE}" history taskapp --max 1 | awk 'NR==2 {print $1}')"
+          {
+            echo "### Prod deployed"
+            echo "- Image tag: \`${IMAGE_TAG}\`"
+            echo "- Backend digest: \`${BACKEND_DIGEST}\`"
+            echo "- Frontend digest: \`${FRONTEND_DIGEST}\`"
+            echo "- URL: https://${HOST}"
+            echo "- Helm revision: ${revision}"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Diagnostics on failure
+        if: failure()
+        run: |
+          kubectl -n "${NAMESPACE}" get pods -o wide || true
+          kubectl -n "${NAMESPACE}" get events --sort-by=.lastTimestamp | tail -n 30 || true
+          helm -n "${NAMESPACE}" history taskapp --max 5 || true
