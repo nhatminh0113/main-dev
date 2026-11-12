@@ -1,0 +1,36 @@
+---
+# Reads only tls.crt (the public certificate) of the CA Secret, never tls.key.
+- name: Read the root CA certificate from the cluster
+  ansible.builtin.command:
+    argv:
+      - "{{ ca_trust_k3s_bin }}"
+      - kubectl
+      - -n
+      - "{{ ca_trust_secret_namespace }}"
+      - get
+      - secret
+      - "{{ ca_trust_secret_name }}"
+      - -o
+      - 'jsonpath={.data.tls\.crt}'
+  register: ca_trust_secret
+  changed_when: false
+  check_mode: false
+
+- name: Check that the value is a certificate without a private key
+  ansible.builtin.assert:
+    that:
+      - (ca_trust_secret.stdout | b64decode).startswith('-----BEGIN CERTIFICATE-----')
+      - "'PRIVATE KEY' not in (ca_trust_secret.stdout | b64decode)"
+    fail_msg: >-
+      Secret {{ ca_trust_secret_namespace }}/{{ ca_trust_secret_name }} has no usable tls.crt:
+      run terraform apply in infra/terraform first.
+    quiet: true
+
+- name: Install the root CA into the system trust store
+  ansible.builtin.copy:
+    content: "{{ ca_trust_secret.stdout | b64decode }}"
+    dest: "{{ ca_trust_cert_path }}"
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Update CA certificates

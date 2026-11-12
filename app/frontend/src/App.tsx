@@ -1,0 +1,48 @@
+import { QueryClientProvider, type QueryClient } from '@tanstack/react-query'
+import type { ReactNode } from 'react'
+import { Navigate, Route, Routes } from 'react-router'
+import { useFeature } from './api/hooks'
+import { ToastProvider } from './components/Toast'
+import { AppShell } from './layout/AppShell'
+import { CompletedView } from './views/CompletedView'
+import { FeatureOffView } from './views/FeatureOffView'
+import { LabelRoute } from './views/LabelView'
+import { NotFoundView } from './views/NotFoundView'
+import { InboxRoute, ProjectRoute } from './views/ProjectView'
+import { SearchView } from './views/SearchView'
+import { TodayView } from './views/TodayView'
+import { UpcomingView } from './views/UpcomingView'
+import { WeekView } from './views/WeekView'
+
+export function AppProviders({ client, children }: { client: QueryClient; children: ReactNode }) {
+  return (
+    <QueryClientProvider client={client}>
+      <ToastProvider>{children}</ToastProvider>
+    </QueryClientProvider>
+  )
+}
+
+/** The week timetable is behind the `week_view` feature flag (UI-only gate). */
+function WeekRoute() {
+  const enabled = useFeature('week_view')
+  return enabled ? <WeekView /> : <FeatureOffView title="Lịch tuần" featureName="Lịch tuần" />
+}
+
+export function AppRoutes() {
+  return (
+    <Routes>
+      <Route element={<AppShell />}>
+        <Route index element={<Navigate to="/today" replace />} />
+        <Route path="inbox" element={<InboxRoute />} />
+        <Route path="today" element={<TodayView />} />
+        <Route path="upcoming" element={<UpcomingView />} />
+        <Route path="week" element={<WeekRoute />} />
+        <Route path="completed" element={<CompletedView />} />
+        <Route path="search" element={<SearchView />} />
+        <Route path="project/:id" element={<ProjectRoute />} />
+        <Route path="label/:id" element={<LabelRoute />} />
+        <Route path="*" element={<NotFoundView />} />
+      </Route>
+    </Routes>
+  )
+}

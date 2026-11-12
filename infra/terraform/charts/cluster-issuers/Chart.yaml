@@ -1,0 +1,6 @@
+apiVersion: v2
+name: cluster-issuers
+description: "Internal CA for cert-manager: selfsigned ClusterIssuer, root CA Certificate, ClusterIssuer internal-ca. Deployed by Terraform after cert-manager."
+type: application
+# Bump on every template change so helm_release picks it up.
+version: 0.2.0

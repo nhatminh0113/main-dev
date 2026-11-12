@@ -1,0 +1,13 @@
+---
+# Baseline for the k3s VM.
+#   First run (bootstrap):  ansible-playbook playbooks/site.yml -u nhat -K
+#   Later runs:             ansible-playbook playbooks/site.yml   (user deploy, no password)
+# common runs before security: the deploy user and its key exist before SSH
+# password login is turned off. network adds the Host-only address and /etc/hosts.
+- name: Baseline (users, updates, swap, Host-only network, firewall, fail2ban, SSH)
+  hosts: k3s
+  become: true
+  roles:
+    - role: common
+    - role: network
+    - role: security

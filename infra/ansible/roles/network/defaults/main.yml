@@ -1,0 +1,5 @@
+---
+# MAC of the VirtualBox Host-only adapter, set per host in inventory/host_vars/.
+# base_domain, network_hostonly_* and network_hosts_names come from group_vars/all
+# (the k3s role reads them too).
+network_hostonly_mac: ""

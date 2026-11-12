@@ -1,0 +1,53 @@
+---
+# Service account on the VM. System user, no sudo, no login shell.
+github_runner_user: gh-runner
+github_runner_home: /home/gh-runner
+# Runner installation (owned by the runner user; _work, _diag and auto-update live here).
+github_runner_dir: /opt/actions-runner
+# Root-owned tools and the pre-job hook. The runner user cannot modify anything here.
+github_runner_lib_dir: /usr/local/lib/github-runner
+# Downloaded archives, kept for the checksum-verified extract steps.
+github_runner_dist_dir: /usr/local/share/github-runner
+github_runner_service: actions-runner
+# Repository the runner serves. Also the only repository the pre-job hook accepts.
+github_runner_repository: nhatminh0113/main-dev
+github_runner_name: k3s-vm
+# Workflows select this runner with runs-on: [self-hosted, vps].
+github_runner_labels:
+  - vps
+# Pinned actions/runner release (https://github.com/actions/runner/releases/tag/v2.338.2).
+# Only the install-time version: the runner keeps itself updated (GitHub stops
+# queuing jobs for runners that are too old), and the role never downgrades it.
+# Recompute the checksum whenever the version changes (the release notes list it).
+github_runner_version: 2.338.2
+github_runner_sha256: baebf204307bac6193480852732f0aba2ae97b6c5597c244f4d5558390147c40
+github_runner_url: "https://github.com/actions/runner/releases/download/v{{ github_runner_version }}/\
+  actions-runner-linux-x64-{{ github_runner_version }}.tar.gz"
+# kubectl and helm for the deploy jobs. They take precedence over the kubectl symlink
+# of k3s through the runner PATH (runner.path.j2). Recompute the checksums when the
+# versions change:
+#   curl -fsSL https://dl.k8s.io/release/<version>/bin/linux/amd64/kubectl.sha256
+#   curl -fsSL https://get.helm.sh/helm-<version>-linux-amd64.tar.gz.sha256sum
+github_runner_kubectl_version: v1.36.5
+github_runner_kubectl_sha256: 33bc88a24c3b09cf55bfd59e6ca977881b61fc3f25ab65bc80c65b430248648e
+github_runner_kubectl_url: "https://dl.k8s.io/release/{{ github_runner_kubectl_version }}/bin/linux/amd64/kubectl"
+github_runner_helm_version: v4.3.1
+github_runner_helm_sha256: 0403a88ae20913d11b10a2467b50087721fea7581736da6b9d3992f5357fe54b
+github_runner_helm_url: "https://get.helm.sh/helm-{{ github_runner_helm_version }}-linux-amd64.tar.gz"
+# git: actions/checkout. curl: smoke tests. apache2-utils: htpasswd (bcrypt for Basic Auth).
+# The rest are the .NET runtime dependencies on Ubuntu 24.04.
+github_runner_packages:
+  - git
+  - curl
+  - apache2-utils
+  - libicu74
+  - libkrb5-3
+  - zlib1g
+  - libssl3t64
+# Kubeconfig of the ci/deployer ServiceAccount, exported on the control node (WSL):
+#   terraform output -raw deployer_kubeconfig > ~/.config/taskapp/deployer.kubeconfig
+# It stays outside the repository.
+github_runner_kubeconfig_src: "{{ lookup('ansible.builtin.env', 'HOME') }}/.config/taskapp/deployer.kubeconfig"
+# Ansible Vault file with vault_github_runner_token (see vault/github-runner.yml.example).
+# Read only while the runner is not registered yet.
+github_runner_vault_file: "{{ playbook_dir }}/../vault/github-runner.yml"

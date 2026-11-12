@@ -59,6 +59,8 @@ override.tf.json
 *_override.tf
 *_override.tf.json
 .tflint.d/
+# Exported root CA certificate (per cluster, exported outside the repo)
+taskapp-ca.crt
 
 # ---------- Kubernetes ----------
 *.kubeconfig
@@ -68,14 +70,24 @@ kubeconfig-deployer*
 # ---------- Ansible ----------
 # Real inventory contains the VPS IP: commit hosts.example.yml only
 infra/ansible/inventory/hosts.yml
+# Per-host values (MAC addresses): commit host_vars.example/ only
+infra/ansible/inventory/host_vars/
 *.retry
 .vault_pass
 .vault_pass.txt
 vault_pass*
-# Decrypted vault files (keep only the encrypted vault.yml in git)
+# Real vault files (runner registration token) stay local; commit only *.yml.example
+infra/ansible/vault/*.yml
+# Decrypted vault files
 *.decrypted.yml
 *.dec.yml
 vault.plain.yml
+
+# ---------- Local only: docs, report, AI assistant config ----------
+# The public repository contains code only.
+docs/
+.kiro/
+_build_docx.py
 
 # ---------- Helm ----------
 helm/**/charts/*.tgz

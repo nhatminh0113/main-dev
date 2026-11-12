@@ -1,0 +1,65 @@
+---
+# ---------- Host-only adapter ----------
+- name: Check that the Host-only adapter exists
+  ansible.builtin.assert:
+    that:
+      - network_hostonly_mac | length > 0
+      - (network_hostonly_mac | lower) in network_present_macs
+    fail_msg: >-
+      Set network_hostonly_mac in inventory/host_vars/{{ inventory_hostname }}.yml
+      to the MAC of the Host-only adapter (found: {{ network_present_macs | join(', ') }}).
+    quiet: true
+  vars:
+    network_present_macs: >-
+      {{ ansible_facts['interfaces']
+         | map('regex_replace', '-', '_')
+         | map('extract', ansible_facts, 'macaddress')
+         | select('defined') | map('lower') | list }}
+
+# The Bridged adapter (50-cloud-init.yaml) is never touched, and this file adds no
+# route, so applying it cannot cut the SSH session that runs the play.
+- name: Write the netplan file of the Host-only adapter
+  ansible.builtin.template:
+    src: 60-hostonly.yaml.j2
+    dest: /etc/netplan/60-hostonly.yaml
+    owner: root
+    group: root
+    mode: "0600"
+  notify: Validate netplan
+
+- name: Apply a pending netplan change
+  ansible.builtin.meta: flush_handlers
+
+- name: Wait for the connection after netplan apply
+  ansible.builtin.wait_for_connection:
+    timeout: 60
+
+- name: Refresh network facts
+  ansible.builtin.setup:
+    gather_subset:
+      - "!all"
+      - "!min"
+      - network
+
+- name: Check the Host-only address and the default route
+  ansible.builtin.assert:
+    that:
+      - ansible_facts[network_hostonly_interface]['ipv4']['address'] | default('') == network_hostonly_ip
+      - ansible_facts['default_ipv4']['interface'] | default('') != network_hostonly_interface
+    fail_msg: >-
+      {{ network_hostonly_interface }} should have {{ network_hostonly_ip }} and the
+      default route should stay on the Bridged adapter.
+    quiet: true
+  when: not ansible_check_mode
+
+# ---------- Local names ----------
+- name: Map the project host names to the Host-only address
+  ansible.builtin.blockinfile:
+    path: /etc/hosts
+    marker: "# {mark} ANSIBLE MANAGED taskapp"
+    block: >-
+      {{ network_hostonly_ip }}
+      {{ network_hosts_names | map('regex_replace', '$', '.' ~ base_domain) | join(' ') }}
+    owner: root
+    group: root
+    mode: "0644"

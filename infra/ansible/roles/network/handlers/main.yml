@@ -1,0 +1,10 @@
+---
+# `netplan generate` fails on an invalid file before anything is applied.
+- name: Validate netplan
+  ansible.builtin.command: netplan generate
+  changed_when: true
+  notify: Apply netplan
+
+- name: Apply netplan
+  ansible.builtin.command: netplan apply
+  changed_when: true

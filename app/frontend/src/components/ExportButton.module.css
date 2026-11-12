@@ -1,0 +1,67 @@
+.wrap {
+  display: flex;
+  flex-direction: column;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* Same look as the sidebar footer buttons. */
+.button {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 32px;
+  padding: 0 var(--space-3);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  text-align: left;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-sm);
+}
+
+.button:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-text) 6%, transparent);
+}
+
+.button:disabled {
+  cursor: progress;
+}
+
+.link {
+  font-weight: 600;
+  color: var(--color-accent-text);
+  text-decoration: none;
+}
+
+.small {
+  padding: 2px var(--space-2);
+  font-size: var(--font-size-xs);
+  color: var(--color-accent-text);
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.small:hover {
+  background: var(--color-surface-hover);
+}
+
+.error {
+  padding: var(--space-1) var(--space-3);
+  margin: 0;
+  font-size: var(--font-size-xs);
+  color: var(--color-danger);
+}
+
+.status {
+  padding: 0 var(--space-3);
+  margin: 0;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-subtle);
+}

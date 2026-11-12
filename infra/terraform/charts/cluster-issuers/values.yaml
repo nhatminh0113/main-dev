@@ -1,0 +1,17 @@
+# Values are set by Terraform (cert-manager.tf). Required: rootCA.permittedDNSDomains.
+
+# Bootstraps the root CA only (signs the CA certificate with its own key).
+selfSignedIssuer: selfsigned
+# Issuer used by the Ingress annotation cert-manager.io/cluster-issuer.
+caIssuer: internal-ca
+
+rootCA:
+  # Certificate and Secret name in the release namespace (cert-manager).
+  name: taskapp-root-ca
+  commonName: Taskapp Internal Root CA
+  organization: Taskapp
+  # 10 years, renewed 30 days before expiry (renewal creates a new CA to reinstall).
+  duration: 87600h
+  renewBefore: 720h
+  # X.509 name constraints: the CA can only sign names under these domains.
+  permittedDNSDomains: []

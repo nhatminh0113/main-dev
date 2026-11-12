@@ -19,6 +19,8 @@ KUBECONFORM_VERSION="v0.8.0"
 NODE_VERSION="v24.22.0"         # Node.js LTS
 ANSIBLE_VERSION="14.5.0"        # community package, ships ansible-core 2.21
 ANSIBLE_LINT_VERSION="26.10.1"
+TRIVY_VERSION="0.76.0"          # same version as the CI scan
+ACTIONLINT_VERSION="1.7.12"     # GitHub Actions workflow linter
 
 BIN_DIR="${HOME}/.local/bin"
 OPT_DIR="${HOME}/.local/opt"
@@ -148,6 +150,37 @@ else
   install -m 0755 "${TMP_DIR}/kc/kubeconform" "${BIN_DIR}/kubeconform"
 fi
 
+# ---------- 6b. Trivy (vulnerability scanner) ----------
+log "Trivy ${TRIVY_VERSION}"
+if installed_version_matches trivy "Version: ${TRIVY_VERSION}" --version; then
+  ok "already installed"
+else
+  t_arch=$([[ "${ARCH}" == "amd64" ]] && echo "64bit" || echo "ARM64")
+  f="trivy_${TRIVY_VERSION}_Linux-${t_arch}.tar.gz"
+  base="https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}"
+  download "${base}/${f}" "${TMP_DIR}/${f}"
+  download "${base}/trivy_${TRIVY_VERSION}_checksums.txt" "${TMP_DIR}/trivy.sums"
+  verify "${TMP_DIR}/${f}" "${TMP_DIR}/trivy.sums"
+  mkdir -p "${TMP_DIR}/trivy"
+  tar -xzf "${TMP_DIR}/${f}" -C "${TMP_DIR}/trivy"
+  install -m 0755 "${TMP_DIR}/trivy/trivy" "${BIN_DIR}/trivy"
+fi
+
+# ---------- 6c. actionlint ----------
+log "actionlint ${ACTIONLINT_VERSION}"
+if installed_version_matches actionlint "${ACTIONLINT_VERSION}" -version; then
+  ok "already installed"
+else
+  f="actionlint_${ACTIONLINT_VERSION}_linux_${ARCH}.tar.gz"
+  base="https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}"
+  download "${base}/${f}" "${TMP_DIR}/${f}"
+  download "${base}/actionlint_${ACTIONLINT_VERSION}_checksums.txt" "${TMP_DIR}/actionlint.sums"
+  verify "${TMP_DIR}/${f}" "${TMP_DIR}/actionlint.sums"
+  mkdir -p "${TMP_DIR}/actionlint"
+  tar -xzf "${TMP_DIR}/${f}" -C "${TMP_DIR}/actionlint"
+  install -m 0755 "${TMP_DIR}/actionlint/actionlint" "${BIN_DIR}/actionlint"
+fi
+
 # ---------- 7. Node.js LTS ----------
 log "Node.js ${NODE_VERSION}"
 NODE_DIR="${OPT_DIR}/node-${NODE_VERSION}-linux-${NODE_ARCH}"
@@ -199,6 +232,8 @@ echo "kubectl    : $(kubectl version --client 2>/dev/null | head -1)"
 echo "helm       : $(helm version --short)"
 echo "tflint     : $(tflint --version | head -1)"
 echo "kubeconform: $(kubeconform -v)"
+echo "trivy      : $(trivy --version | head -1)"
+echo "actionlint : $(actionlint -version | head -1)"
 echo "node       : $(node --version)  (npm $(npm --version))"
 echo "ansible    : $(ansible --version | head -1)"
 echo "ansible-lint: $(ansible-lint --version 2>/dev/null | head -1)"
