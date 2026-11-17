@@ -1,5 +1,7 @@
 ---
-# Copy to inventory/host_vars/k3s-vm.yml (gitignored) and set the MAC address of the
-# VirtualBox Host-only adapter (Adapter 2): `ip -o link` on the VM.
+# Copy to inventory/host_vars/k3s-vm.yml (gitignored) and set the MAC addresses of
+# the VirtualBox NAT adapter (Adapter 1) and Host-only adapter (Adapter 2):
+# `ip -o link` on the VM.
+network_uplink_mac: "08:00:27:00:00:01"
 network_hostonly_mac: "08:00:27:00:00:00"
 network_hostonly_address: 192.168.56.10/24

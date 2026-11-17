@@ -1,6 +1,6 @@
 {{ ansible_managed | comment }}
 # VirtualBox Host-only adapter: static address only. No gateway and no DNS here,
-# Internet traffic keeps using the Bridged adapter (50-cloud-init.yaml).
+# Internet traffic keeps using the NAT adapter (50-uplink.yaml).
 network:
   version: 2
   ethernets:

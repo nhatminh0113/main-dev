@@ -20,6 +20,8 @@ network_hosts_names:
   - staging
   - app
   - grafana
+# Name given to the VirtualBox NAT adapter (Adapter 1, DHCP, Internet access only).
+network_uplink_interface: enp0s3
 # Name given to the Host-only adapter (matched by MAC, see host_vars.example/).
 network_hostonly_interface: enp0s8
 network_hostonly_address: 192.168.56.10/24

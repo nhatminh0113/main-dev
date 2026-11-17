@@ -9,7 +9,7 @@ k3s_install_script_sha256: 46177d4c99440b4c0311b67233823a8e8a2fc09693f6c89af1a71
 k3s_install_script_dir: /usr/local/share/k3s-install
 
 # Address the node registers with: the static Host-only IP (network role). The
-# Bridged IP changes when the laptop joins another network, which would break the node.
+# NAT address (enp0s3) is shared by every VirtualBox NAT VM and not reachable from the host.
 k3s_node_ip: "{{ network_hostonly_ip }}"
 k3s_flannel_iface: "{{ network_hostonly_interface }}"
 

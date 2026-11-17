@@ -1,5 +1,10 @@
 ---
-# MAC of the VirtualBox Host-only adapter, set per host in inventory/host_vars/.
-# base_domain, network_hostonly_* and network_hosts_names come from group_vars/all
-# (the k3s role reads them too).
+# MACs of the VirtualBox NAT (Adapter 1) and Host-only (Adapter 2) adapters, set per
+# host in inventory/host_vars/.
+# base_domain, network_uplink_interface, network_hostonly_* and network_hosts_names
+# come from group_vars/all (the k3s role reads them too).
+network_uplink_mac: ""
 network_hostonly_mac: ""
+# Installer netplan file replaced by 50-uplink.yaml (cloud-init network config is
+# disabled, so it is never written again).
+network_installer_netplan: /etc/netplan/50-cloud-init.yaml
