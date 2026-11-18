@@ -2,7 +2,7 @@
 #   main.tf          namespaces with Pod Security Standards labels
 #   rbac.tf          ServiceAccount "deployer" used by the self-hosted runner (Task 10/11)
 #   cert-manager.tf  cert-manager + internal root CA, ClusterIssuers selfsigned and internal-ca
-#   monitoring.tf    kube-prometheus-stack (Task 12, not yet)
+#   monitoring.tf    kube-prometheus-stack + Grafana (Task 12)
 
 locals {
   managed_labels = {
