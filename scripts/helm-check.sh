@@ -6,6 +6,8 @@
 #   3. Guard rails: rendering must fail without image.tag, with image.tag=latest or without a host
 #   4. Worker assertions: hardened worker Deployment, Service, ServiceMonitor and the
 #      NetworkPolicy flows (worker -> postgres, monitoring -> worker:9000), worker.enabled=false
+#   4b. Monitoring: ServiceMonitors, PrometheusRule (BackendDown/absent, HighErrorRate, WorkerDown),
+#      dashboard ConfigMap only in staging, dashboard JSON sanity (promtool is optional)
 #   5. TLS: Ingress issuer internal-ca, no ACME solver policy; lint + kubeconform of the local
 #      cluster-issuers chart (infra/terraform/charts/cluster-issuers) and its domain guard
 #
@@ -146,6 +148,79 @@ no_worker="$(helm template taskapp "${CHART}" -n prod -f "${CHART}/values-prod.y
 expect_not_in "worker.enabled=false renders no worker objects" "${no_worker}" "name: taskapp-worker"
 expect_in "worker.enabled=false keeps the backend ServiceMonitor" \
   "$(render_doc ServiceMonitor taskapp-backend <<<"${no_worker}")" "port: http"
+
+echo "==> monitoring assertions (PrometheusRule, Grafana dashboard)"
+for env in staging prod; do
+  rendered="$(helm template taskapp "${CHART}" -n "${env}" -f "${CHART}/values-${env}.yaml" \
+    --set image.tag="${TAG}" --set ingress.host="${env}.taskapp.internal")"
+  expect_in "${env} backend ServiceMonitor is rendered" \
+    "$(render_doc ServiceMonitor taskapp-backend <<<"${rendered}")" "port: http" "path: /metrics"
+  expect_in "${env} worker ServiceMonitor is rendered" \
+    "$(render_doc ServiceMonitor taskapp-worker <<<"${rendered}")" "port: metrics" "path: /metrics"
+  rules="$(render_doc PrometheusRule taskapp <<<"${rendered}")"
+  # shellcheck disable=SC2016  # the PromQL template text is matched literally
+  expect_in "${env} PrometheusRule has BackendDown (with absent), HighErrorRate and WorkerDown" \
+    "${rules}" \
+    "alert: BackendDown" "alert: HighErrorRate" "alert: WorkerDown" \
+    "absent(up{namespace=\"${env}\", job=\"taskapp-backend\"})" \
+    "absent(up{namespace=\"${env}\", job=\"taskapp-worker\"})" \
+    "for: 2m" 'status="5xx"' "namespace: \"${env}\"" 'job: "taskapp-backend"' \
+    '{{ $value | humanizePercentage }}'
+  other="staging"; [ "${env}" = "staging" ] && other="prod"
+  expect_not_in "${env} PrometheusRule never mentions the ${other} namespace" "${rules}" "namespace=\"${other}\""
+  # Optional: promtool validates the rule expressions when promtool and PyYAML are installed.
+  if command -v promtool >/dev/null 2>&1 && python3 -c 'import yaml' 2>/dev/null; then
+    tmp_rules="$(mktemp --suffix=.yml)"
+    python3 -c 'import sys, yaml; d = yaml.safe_load(sys.stdin); yaml.safe_dump({"groups": d["spec"]["groups"]}, open(sys.argv[1], "w"))' \
+      "${tmp_rules}" <<<"${rules}"
+    promtool check rules "${tmp_rules}"
+    rm -f "${tmp_rules}"
+  else
+    echo "skip: promtool or PyYAML not installed, rule expressions are not parsed (optional)"
+  fi
+done
+staging_render="$(helm template taskapp "${CHART}" -n staging -f "${CHART}/values-staging.yaml" \
+  --set image.tag="${TAG}" --set ingress.host=staging.taskapp.internal)"
+prod_render="$(helm template taskapp "${CHART}" -n prod -f "${CHART}/values-prod.yaml" \
+  --set image.tag="${TAG}" --set ingress.host=app.taskapp.internal)"
+expect_in "staging renders the dashboard ConfigMap for the Grafana sidecar" \
+  "$(render_doc ConfigMap taskapp-grafana-dashboard <<<"${staging_render}")" \
+  'grafana_dashboard: "1"' "taskapp-overview.json: |-" '"uid": "taskapp-overview"'
+expect_not_in "prod renders no dashboard ConfigMap (one uid, one release)" \
+  "${prod_render}" "grafana_dashboard"
+no_worker_rules="$(helm template taskapp "${CHART}" -n prod -f "${CHART}/values-prod.yaml" \
+  --set image.tag="${TAG}" --set ingress.host=app.example.test --set worker.enabled=false)"
+expect_not_in "worker.enabled=false drops the WorkerDown alert" "${no_worker_rules}" "alert: WorkerDown"
+expect_in "worker.enabled=false keeps BackendDown" "${no_worker_rules}" "alert: BackendDown"
+expect_not_in "prometheusRule.enabled=false renders no rules" \
+  "$(helm template taskapp "${CHART}" -n prod -f "${CHART}/values-prod.yaml" \
+    --set image.tag="${TAG}" --set ingress.host=app.example.test --set prometheusRule.enabled=false)" \
+  "kind: PrometheusRule"
+
+# The dashboard file (embedded by the ConfigMap) must be valid JSON with unique panel ids,
+# no overlapping panels and every query bound to the ${datasource} variable.
+python3 - "${CHART}/dashboards/taskapp-overview.json" <<'PY'
+import json, sys
+d = json.load(open(sys.argv[1], encoding="utf-8"))
+ps = d["panels"]
+ids = [p["id"] for p in ps]
+assert len(ids) == len(set(ids)), "duplicate panel ids"
+for i, a in enumerate(ps):
+    ga = a["gridPos"]
+    assert ga["x"] + ga["w"] <= 24, f"panel {a['title']} exceeds the grid"
+    for b in ps[i + 1:]:
+        gb = b["gridPos"]
+        assert not (ga["x"] < gb["x"] + gb["w"] and gb["x"] < ga["x"] + ga["w"]
+                    and ga["y"] < gb["y"] + gb["h"] and gb["y"] < ga["y"] + ga["h"]), \
+            f"panels overlap: {a['title']} / {b['title']}"
+for p in ps:
+    if p["type"] == "row":
+        continue
+    for t in p["targets"]:
+        assert t["datasource"]["uid"] == "${datasource}", f"{p['title']}: query not on ${{datasource}}"
+        assert 'namespace="$namespace"' in t["expr"], f"{p['title']}: query not filtered by namespace"
+print("ok: dashboard JSON valid, %d panels, unique ids, no overlaps, queries use ${datasource}" % len(ps))
+PY
 
 echo "==> cluster-issuers chart (infra/terraform, deployed by Terraform)"
 ISSUERS_CHART="infra/terraform/charts/cluster-issuers"

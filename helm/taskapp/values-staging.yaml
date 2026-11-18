@@ -22,3 +22,13 @@ ingress:
 # The chart keeps the feature: set enabled=true and create the Secret to reuse it.
 basicAuth:
   enabled: false
+
+serviceMonitor:
+  enabled: true
+
+prometheusRule:
+  enabled: true
+
+# Only staging ships the dashboard (fixed uid); it can switch to the prod namespace.
+grafanaDashboard:
+  enabled: true

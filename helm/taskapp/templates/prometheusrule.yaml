@@ -1,0 +1,64 @@
+{{- if .Values.prometheusRule.enabled }}
+{{- $ns := .Release.Namespace }}
+{{- $backend := printf "%s-backend" (include "taskapp.fullname" .) }}
+{{- $worker := printf "%s-worker" (include "taskapp.fullname" .) }}
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: {{ include "taskapp.fullname" . }}
+  labels:
+    {{- include "taskapp.labels" (dict "ctx" . "component" "alerts") | nindent 4 }}
+    {{- with .Values.prometheusRule.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  groups:
+    - name: {{ include "taskapp.fullname" . }}.{{ $ns }}
+      rules:
+        # A scaled-to-zero Deployment removes the scrape target, so up == 0 never matches:
+        # absent() is the branch that fires in that case. Its matchers are literal, so the
+        # alert carries the namespace and job labels.
+        - alert: BackendDown
+          expr: |
+            max by (namespace, job) (up{namespace="{{ $ns }}", job="{{ $backend }}"}) == 0
+            or absent(up{namespace="{{ $ns }}", job="{{ $backend }}"})
+          for: 2m
+          labels:
+            severity: critical
+            namespace: {{ $ns | quote }}
+            job: {{ $backend | quote }}
+          annotations:
+            summary: "Backend is down in {{ $ns }}"
+            description: "No backend target in namespace {{ $ns }} has been up (or the target is missing) for 2 minutes."
+        # The traffic guard (> 0.05 req/s) keeps a single failed request on an idle system
+        # from alerting. 0/0 is NaN and never fires.
+        - alert: HighErrorRate
+          expr: |
+            (
+              sum(rate(http_requests_total{namespace="{{ $ns }}", job="{{ $backend }}", status="5xx"}[5m]))
+              / sum(rate(http_requests_total{namespace="{{ $ns }}", job="{{ $backend }}"}[5m]))
+            ) > 0.05
+            and sum(rate(http_requests_total{namespace="{{ $ns }}", job="{{ $backend }}"}[5m])) > 0.05
+          for: 5m
+          labels:
+            severity: warning
+            namespace: {{ $ns | quote }}
+            job: {{ $backend | quote }}
+          annotations:
+            summary: "Backend 5xx error ratio above 5% in {{ $ns }}"
+            description: {{ printf "5xx responses are %s of requests over the last 5 minutes in %s." "{{ $value | humanizePercentage }}" $ns | quote }}
+{{- if .Values.worker.enabled }}
+        - alert: WorkerDown
+          expr: |
+            max by (namespace, job) (up{namespace="{{ $ns }}", job="{{ $worker }}"}) == 0
+            or absent(up{namespace="{{ $ns }}", job="{{ $worker }}"})
+          for: 5m
+          labels:
+            severity: warning
+            namespace: {{ $ns | quote }}
+            job: {{ $worker | quote }}
+          annotations:
+            summary: "Worker is down in {{ $ns }}"
+            description: "No worker target in namespace {{ $ns }} has been up (or the target is missing) for 5 minutes."
+{{- end }}
+{{- end }}
