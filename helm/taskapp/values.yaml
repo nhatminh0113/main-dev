@@ -81,6 +81,19 @@ serviceMonitor:
   interval: 30s
   labels: {}
 
+# PrometheusRule with BackendDown, HighErrorRate and (when worker.enabled) WorkerDown.
+# Matchers use the release namespace and the Service names <fullname>-backend / -worker,
+# which is the Prometheus "job" label produced by the ServiceMonitors above.
+prometheusRule:
+  enabled: false
+  labels: {}
+
+# Grafana dashboard "Taskapp - Overview" as a ConfigMap labelled grafana_dashboard=1 (picked up by
+# the Grafana sidecar in every namespace). Enable it in ONE release only: the dashboard uid is fixed.
+# The namespace variable of the dashboard lets it show every environment.
+grafanaDashboard:
+  enabled: false
+
 # NetworkPolicies: default-deny ingress, only the expected flows allowed (Task 13).
 networkPolicy:
   enabled: false

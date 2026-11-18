@@ -20,6 +20,45 @@ variable "cert_manager_chart_version" {
   default     = "v1.21.3"
 }
 
+variable "kube_prometheus_stack_chart_version" {
+  description = "kube-prometheus-stack Helm chart version (https://prometheus-community.github.io/helm-charts)."
+  type        = string
+  default     = "93.3.1"
+}
+
+variable "grafana_admin_password" {
+  description = "Password of the Grafana admin user (stored in a Kubernetes Secret, not in Helm values)."
+  type        = string
+  sensitive   = true
+
+  validation {
+    condition     = length(var.grafana_admin_password) >= 12
+    error_message = "grafana_admin_password must be at least 12 characters."
+  }
+}
+
+variable "dashboard_basic_auth_user" {
+  description = "User name of the Traefik Basic Auth gate in front of Grafana."
+  type        = string
+  default     = "admin"
+
+  validation {
+    condition     = can(regex("^[a-zA-Z0-9._-]+$", var.dashboard_basic_auth_user))
+    error_message = "dashboard_basic_auth_user may only contain letters, digits, dot, underscore and hyphen."
+  }
+}
+
+variable "dashboard_basic_auth_password" {
+  description = "Password of the Traefik Basic Auth gate in front of Grafana (hashed with bcrypt before it is stored)."
+  type        = string
+  sensitive   = true
+
+  validation {
+    condition     = length(var.dashboard_basic_auth_password) >= 12
+    error_message = "dashboard_basic_auth_password must be at least 12 characters."
+  }
+}
+
 variable "deployer_api_server" {
   description = "API server URL written into the deployer kubeconfig. The self-hosted runner runs on the VM itself, so the loopback address (covered by the k3s certificate) is correct."
   type        = string
