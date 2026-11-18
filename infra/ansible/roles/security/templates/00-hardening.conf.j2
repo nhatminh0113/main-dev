@@ -1,0 +1,11 @@
+# {{ ansible_managed }}
+# Read before 50-cloud-init.conf: sshd keeps the first value it sees for these keywords.
+PermitRootLogin no
+PasswordAuthentication no
+KbdInteractiveAuthentication no
+PubkeyAuthentication yes
+MaxAuthTries 3
+X11Forwarding no
+AllowAgentForwarding no
+# Kept on: Task 8 reaches the Kubernetes API with `ssh -L 6443:127.0.0.1:6443`.
+AllowTcpForwarding yes

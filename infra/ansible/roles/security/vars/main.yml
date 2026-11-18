@@ -1,0 +1,18 @@
+---
+# Lines that `sshd -T` must print once 00-hardening.conf is in effect.
+security_sshd_expected:
+  - permitrootlogin no
+  - passwordauthentication no
+  - kbdinteractiveauthentication no
+  - pubkeyauthentication yes
+  - maxauthtries 3
+  - x11forwarding no
+  - allowagentforwarding no
+  - allowtcpforwarding yes
+
+# `ufw status verbose` rules that accept traffic from ANY source (From column is
+# "Anywhere" or "Anywhere (v6)"); the capture is the "To" column. Rules limited to a
+# source range, such as the k3s pod/service networks added in Task 8, do not open a
+# port to the LAN or the Internet and are not counted.
+security_ufw_open_v4_regex: '(?m)^(.+?)\s+(?:ALLOW|LIMIT) IN\s+Anywhere(?! \(v6\))(?:\s|$)'
+security_ufw_open_v6_regex: '(?m)^(.+?) \(v6\)\s+(?:ALLOW|LIMIT) IN\s+Anywhere \(v6\)(?:\s|$)'

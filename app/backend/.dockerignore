@@ -1,0 +1,9 @@
+# Only the files the image needs: requirements, alembic, app/, entrypoint
+**
+!requirements.txt
+!alembic.ini
+!alembic/
+!app/
+!docker-entrypoint.sh
+**/__pycache__
+**/*.py[cod]

@@ -1,0 +1,125 @@
+---
+- name: Install UFW and fail2ban
+  ansible.builtin.apt:
+    name:
+      - ufw
+      - fail2ban
+      - python3-systemd # fail2ban backend = systemd reads the journal
+    state: present
+
+# ---------- Firewall (UFW, IPv4 and IPv6) ----------
+# The VM has public IPv6 addresses, so the IPv6 rules matter as much as the IPv4 ones.
+- name: Apply UFW rules to IPv6 as well
+  ansible.builtin.lineinfile:
+    path: /etc/default/ufw
+    regexp: "^IPV6="
+    line: IPV6=yes
+  notify: Reload ufw
+
+- name: Allow SSH before the firewall is enabled
+  community.general.ufw:
+    rule: allow
+    port: "{{ security_ssh_port | string }}"
+    proto: tcp
+    comment: SSH
+
+- name: Allow HTTP and HTTPS
+  community.general.ufw:
+    rule: allow
+    port: "{{ item | string }}"
+    proto: tcp
+    comment: Ingress
+  loop: "{{ security_web_tcp_ports }}"
+
+- name: Deny incoming traffic by default
+  community.general.ufw:
+    default: deny
+    direction: incoming
+
+- name: Allow outgoing traffic by default
+  community.general.ufw:
+    default: allow
+    direction: outgoing
+
+- name: Enable the firewall
+  community.general.ufw:
+    state: enabled
+
+# ---------- fail2ban ----------
+- name: Configure the fail2ban jail for sshd
+  ansible.builtin.template:
+    src: jail-sshd.local.j2
+    dest: /etc/fail2ban/jail.d/sshd.local
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart fail2ban
+
+- name: Enable and start fail2ban
+  ansible.builtin.systemd_service:
+    name: fail2ban
+    enabled: true
+    state: started
+
+# ---------- SSH server ----------
+# sshd keeps the first value it reads for most keywords. "00-" sorts before
+# 50-cloud-init.conf (which may say PasswordAuthentication yes) and the Include line
+# sits at the top of /etc/ssh/sshd_config, so these values win.
+# validate runs `sshd -t` on the full configuration with the candidate file read
+# first, so a file that would break sshd never reaches /etc/ssh.
+- name: Harden the SSH server
+  ansible.builtin.template:
+    src: 00-hardening.conf.j2
+    dest: /etc/ssh/sshd_config.d/00-hardening.conf
+    owner: root
+    group: root
+    mode: "0600"
+    validate: >-
+      /bin/sh -c 'tmp=$(mktemp) && printf "Include %%s\nInclude /etc/ssh/sshd_config\n" "$1" > "$tmp"
+      && /usr/sbin/sshd -t -f "$tmp"; rc=$?; rm -f "$tmp"; exit $rc' sh %s
+  notify: Reload ssh
+
+- name: Apply pending firewall, fail2ban and SSH changes now
+  ansible.builtin.meta: flush_handlers
+
+# ---------- Checks (read-only, never report "changed") ----------
+- name: Read the effective SSH server settings
+  ansible.builtin.command: /usr/sbin/sshd -T
+  register: security_sshd_effective
+  changed_when: false
+
+- name: Check the effective SSH server settings
+  ansible.builtin.assert:
+    that:
+      - security_sshd_missing | length == 0
+    fail_msg: "sshd -T does not show: {{ security_sshd_missing | join(', ') }}"
+    quiet: true
+  vars:
+    security_sshd_missing: "{{ security_sshd_expected | difference(security_sshd_effective.stdout_lines) }}"
+
+- name: Read the firewall status
+  ansible.builtin.command: ufw status verbose
+  register: security_ufw_status
+  changed_when: false
+
+# "Only 22, 80, 443 open" means open to any source. Rules restricted to a source
+# range (k3s pod/service networks, Task 8) are allowed (see vars/main.yml).
+- name: Check that only the planned ports are open to any source (IPv4 and IPv6)
+  ansible.builtin.assert:
+    that:
+      - "security_ufw_status.stdout is search('Status: active')"
+      - "security_ufw_status.stdout is search('Default: deny \\(incoming\\), allow \\(outgoing\\)')"
+      - security_ufw_v4 | sort == security_ufw_expected | sort
+      - security_ufw_v6 | sort == security_ufw_expected | sort
+    fail_msg: >-
+      UFW rules open to any source differ from the plan.
+      IPv4: {{ security_ufw_v4 }}, IPv6: {{ security_ufw_v6 }}, expected: {{ security_ufw_expected }}
+    quiet: true
+  vars:
+    security_ufw_expected: "{{ ([security_ssh_port] + security_web_tcp_ports) | map('string') | map('regex_replace', '$', '/tcp') | list }}"
+    security_ufw_v4: "{{ security_ufw_status.stdout | regex_findall(security_ufw_open_v4_regex) }}"
+    security_ufw_v6: "{{ security_ufw_status.stdout | regex_findall(security_ufw_open_v6_regex) }}"
+
+- name: Check that the sshd jail is running
+  ansible.builtin.command: fail2ban-client status sshd
+  changed_when: false

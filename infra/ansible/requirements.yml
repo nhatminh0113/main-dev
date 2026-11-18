@@ -1,0 +1,7 @@
+---
+# Same versions as bundled in the ansible 14.5.0 package (ansible-galaxy collection list).
+collections:
+  - name: community.general
+    version: 13.5.0
+  - name: ansible.posix
+    version: 2.2.2

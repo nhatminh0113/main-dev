@@ -1,0 +1,70 @@
+.section + .section {
+  margin-top: var(--space-5);
+}
+
+.header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--color-divider);
+}
+
+.heading {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  font-size: var(--font-size-md);
+  font-weight: 700;
+}
+
+.overdue {
+  color: var(--color-due-overdue);
+}
+
+.count {
+  font-size: var(--font-size-xs);
+  font-weight: 400;
+  color: var(--color-text-subtle);
+}
+
+.add {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  min-height: 36px;
+  padding: 0;
+  font-size: var(--font-size-md);
+  color: var(--color-text-muted);
+  text-align: left;
+  background: transparent;
+  border: 0;
+}
+
+.addIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  color: var(--color-accent-text);
+  border-radius: var(--radius-full);
+  transition:
+    background-color var(--duration-fast) var(--ease),
+    color var(--duration-fast) var(--ease);
+}
+
+.add:hover {
+  color: var(--color-accent-text);
+}
+
+.add:hover .addIcon {
+  color: var(--color-on-accent);
+  background: var(--color-accent);
+}
+
+.editor {
+  margin-top: var(--space-2);
+}

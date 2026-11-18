@@ -1,0 +1,21 @@
+# {{ ansible_managed }}
+# Same shape as the unit written by the runner's svc.sh, plus Restart=on-failure.
+# Sandboxing is in actions-runner.service.d/10-hardening.conf.
+[Unit]
+Description=GitHub Actions runner {{ github_runner_name }} ({{ github_runner_repository }})
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+ExecStart=/bin/bash {{ github_runner_dir }}/bin/runsvc.sh
+User={{ github_runner_user }}
+Group={{ github_runner_user }}
+WorkingDirectory={{ github_runner_dir }}
+KillMode=process
+KillSignal=SIGTERM
+TimeoutStopSec=5min
+Restart=on-failure
+RestartSec=10s
+
+[Install]
+WantedBy=multi-user.target

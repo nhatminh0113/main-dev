@@ -1,0 +1,87 @@
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.label {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+}
+
+.colors {
+  padding: 0;
+  margin: 0;
+  border: 0;
+}
+
+.colors legend {
+  margin-bottom: var(--space-2);
+}
+
+.swatches {
+  display: grid;
+  grid-template-columns: repeat(6, 36px);
+  gap: var(--space-2);
+}
+
+.swatch {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: 2px solid transparent;
+  border-radius: var(--radius-full);
+  cursor: pointer;
+}
+
+.swatch:has(input:checked) {
+  border-color: var(--color-text);
+}
+
+.swatch:has(input:focus-visible) {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.dot {
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-full);
+}
+
+.error {
+  font-size: var(--font-size-sm);
+  color: var(--color-danger);
+}
+
+.footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.buttons {
+  display: flex;
+  gap: var(--space-2);
+  margin-left: auto;
+}
+
+.delete {
+  color: var(--color-danger);
+}
+
+.confirm {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-size-sm);
+}

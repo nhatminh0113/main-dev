@@ -1,0 +1,8 @@
+# {{ ansible_managed }}
+# k3s server configuration (https://docs.k3s.io/installation/configuration#configuration-file).
+# Traefik, servicelb and local-path stay enabled: nothing is listed under "disable".
+write-kubeconfig-mode: "0600"
+node-ip: "{{ k3s_node_ip }}"
+flannel-iface: "{{ k3s_flannel_iface }}"
+cluster-cidr: "{{ k3s_cluster_cidr }}"
+service-cidr: "{{ k3s_service_cidr }}"

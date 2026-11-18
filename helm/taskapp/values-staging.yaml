@@ -1,0 +1,24 @@
+# Staging (namespace "staging", deployed on every push to develop).
+# helm upgrade --install taskapp ./helm/taskapp -n staging -f helm/taskapp/values-staging.yaml \
+#   --set image.tag=sha-xxxxxxx --set ingress.host=staging.<base_domain>
+
+backend:
+  replicas: 1
+
+frontend:
+  replicas: 1
+
+postgres:
+  storage:
+    size: 1Gi
+
+ingress:
+  tls:
+    # Signed by the internal CA, which the runner host trusts (Ansible ca_trust),
+    # so the smoke test verifies TLS.
+    clusterIssuer: internal-ca
+
+# The app is reachable only from the dev machine (internal network), so no Basic Auth.
+# The chart keeps the feature: set enabled=true and create the Secret to reuse it.
+basicAuth:
+  enabled: false

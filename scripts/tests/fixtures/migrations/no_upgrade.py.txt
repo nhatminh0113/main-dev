@@ -1,0 +1,7 @@
+"""fixture: module without upgrade()"""
+
+from alembic import op
+
+
+def downgrade() -> None:
+    op.drop_table("tasks")

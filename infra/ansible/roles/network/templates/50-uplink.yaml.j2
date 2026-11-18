@@ -1,0 +1,12 @@
+{{ ansible_managed | comment }}
+# VirtualBox NAT adapter: DHCP from VirtualBox (10.0.2.15, gateway 10.0.2.2), the
+# only route to the Internet. Works whatever network the laptop is on.
+network:
+  version: 2
+  ethernets:
+    uplink:
+      match:
+        macaddress: "{{ network_uplink_mac | lower }}"
+      set-name: {{ network_uplink_interface }}
+      dhcp4: true
+      dhcp6: false

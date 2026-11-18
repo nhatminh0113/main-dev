@@ -1,0 +1,9 @@
+# {{ ansible_managed }}
+# The runner and its jobs write only to the runner directory and the runner user's home
+# (_work, _diag, auto-update, helm and kubectl caches). The rest of the system is read-only.
+[Service]
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths={{ github_runner_dir }} {{ github_runner_home }}

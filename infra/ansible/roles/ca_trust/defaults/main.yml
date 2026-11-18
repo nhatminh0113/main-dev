@@ -1,0 +1,7 @@
+---
+# Root CA created by Terraform (infra/terraform/cert-manager.tf, local.root_ca_name).
+ca_trust_secret_namespace: cert-manager
+ca_trust_secret_name: taskapp-root-ca
+# update-ca-certificates only picks up *.crt files in this directory.
+ca_trust_cert_path: /usr/local/share/ca-certificates/taskapp-ca.crt
+ca_trust_k3s_bin: /usr/local/bin/k3s

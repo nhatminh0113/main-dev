@@ -1,0 +1,155 @@
+---
+# ---------- Packages and automatic updates ----------
+- name: Update the apt cache and upgrade installed packages
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 3600 # reruns within an hour do not refresh the cache
+    upgrade: safe
+
+- name: Install unattended-upgrades
+  ansible.builtin.apt:
+    name: unattended-upgrades
+    state: present
+
+- name: Run apt update and unattended-upgrade every day
+  ansible.builtin.copy:
+    dest: /etc/apt/apt.conf.d/20auto-upgrades
+    content: |
+      APT::Periodic::Update-Package-Lists "1";
+      APT::Periodic::Unattended-Upgrade "1";
+    owner: root
+    group: root
+    mode: "0644"
+
+# Read after 50unattended-upgrades, so this value wins.
+- name: Never reboot automatically after unattended upgrades
+  ansible.builtin.copy:
+    dest: /etc/apt/apt.conf.d/52unattended-upgrades-local
+    content: |
+      Unattended-Upgrade::Automatic-Reboot "false";
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Enable the apt timers and the unattended-upgrades service
+  ansible.builtin.systemd_service:
+    name: "{{ item }}"
+    enabled: true
+    state: started
+  loop:
+    - apt-daily.timer
+    - apt-daily-upgrade.timer
+    - unattended-upgrades.service
+
+- name: Check whether a reboot is pending
+  ansible.builtin.stat:
+    path: /var/run/reboot-required
+    get_checksum: false
+  register: common_reboot_required
+
+- name: Report a pending reboot (the playbook never reboots)
+  ansible.builtin.debug:
+    msg: "Reboot required to finish updates (kernel or libc). Reboot the VM manually: sudo reboot"
+  when: common_reboot_required.stat.exists
+
+# ---------- Time zone ----------
+- name: Set the time zone
+  community.general.timezone:
+    name: "{{ common_timezone }}"
+
+# ---------- Deploy user ----------
+- name: Create the deploy user (password locked, key login only)
+  ansible.builtin.user:
+    name: "{{ common_deploy_user }}"
+    shell: /bin/bash
+    create_home: true
+    password_lock: true
+    state: present
+
+- name: Authorize the control node's SSH key for the deploy user
+  ansible.posix.authorized_key:
+    user: "{{ common_deploy_user }}"
+    key: "{{ lookup('ansible.builtin.file', common_deploy_ssh_public_key_file) }}"
+    state: present
+
+# The account has no usable password, so sudo cannot ask for one.
+- name: Allow the deploy user to run sudo without a password
+  ansible.builtin.copy:
+    dest: /etc/sudoers.d/90-{{ common_deploy_user }}
+    content: |
+      {{ common_deploy_user }} ALL=(ALL:ALL) NOPASSWD: ALL
+    owner: root
+    group: root
+    mode: "0440"
+    validate: /usr/sbin/visudo -cf %s
+
+# ---------- Swap ----------
+- name: Read the swap file
+  ansible.builtin.stat:
+    path: "{{ common_swap_file }}"
+    get_checksum: false
+  register: common_swap_stat
+
+- name: List active swap areas
+  ansible.builtin.command: swapon --show=NAME --noheadings
+  register: common_swap_active
+  changed_when: false
+
+- name: Decide whether the swap file must be (re)created
+  ansible.builtin.set_fact:
+    common_swap_recreate: >-
+      {{ not common_swap_stat.stat.exists
+         or common_swap_stat.stat.size != common_swap_size_mib * 1048576 }}
+    common_swap_is_active: "{{ common_swap_file in common_swap_active.stdout_lines }}"
+
+- name: Recreate the swap file at the planned size
+  when: common_swap_recreate | bool
+  block:
+    - name: Turn off the current swap file
+      ansible.builtin.command: swapoff {{ common_swap_file }}
+      when: common_swap_is_active | bool
+      changed_when: true
+
+    - name: Remove the old swap file
+      ansible.builtin.file:
+        path: "{{ common_swap_file }}"
+        state: absent
+
+    - name: Allocate the new swap file
+      ansible.builtin.command: fallocate -l {{ common_swap_size_mib }}M {{ common_swap_file }}
+      changed_when: true
+
+    - name: Restrict the swap file to root
+      ansible.builtin.file:
+        path: "{{ common_swap_file }}"
+        owner: root
+        group: root
+        mode: "0600"
+
+    - name: Format the swap file
+      ansible.builtin.command: mkswap {{ common_swap_file }}
+      changed_when: true
+
+- name: Turn on the swap file
+  ansible.builtin.command: swapon {{ common_swap_file }}
+  when: common_swap_recreate | bool or not common_swap_is_active | bool
+  changed_when: true
+
+- name: Keep the swap file enabled after reboot
+  ansible.builtin.lineinfile:
+    path: /etc/fstab
+    regexp: '^{{ common_swap_file | regex_escape }}\s'
+    line: "{{ common_swap_file }}\tnone\tswap\tsw\t0\t0"
+    state: present
+
+# ---------- Network ----------
+# The static IP lives in /etc/netplan/50-cloud-init.yaml (set by hand). Without this
+# file cloud-init may regenerate that netplan file on boot and bring DHCP back.
+- name: Stop cloud-init from rewriting the network configuration
+  ansible.builtin.copy:
+    dest: /etc/cloud/cloud.cfg.d/99-disable-network-config.cfg
+    content: |
+      network: {config: disabled}
+    owner: root
+    group: root
+    mode: "0644"

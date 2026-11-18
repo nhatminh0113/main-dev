@@ -1,0 +1,394 @@
+.nav {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+/* ---------- Mobile day picker ---------- */
+.dayPicker {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: var(--space-1);
+  margin-bottom: var(--space-3);
+}
+
+.dayPill {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: var(--space-1) 0;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+}
+
+.dayPill strong {
+  font-size: var(--font-size-md);
+  color: var(--color-text);
+}
+
+.dayPill[aria-pressed='true'] {
+  background: var(--color-accent-soft);
+  border-color: var(--color-accent);
+}
+
+.todayNum {
+  color: var(--color-accent-text) !important;
+}
+
+/* ---------- Calendar ---------- */
+.calendar {
+  --hour: 48px;
+  --gutter: 56px;
+  --cols: var(--gutter) repeat(var(--days), minmax(0, 1fr));
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.headRow,
+.allDayRow,
+.grid {
+  display: grid;
+  grid-template-columns: var(--cols);
+}
+
+/* Reserve the scrollbar width everywhere so header columns line up with the scrolling grid. */
+.headRow,
+.allDayRow {
+  overflow-y: hidden;
+  scrollbar-gutter: stable;
+}
+
+.gutter {
+  border-right: 1px solid var(--color-divider);
+}
+
+.dayHead {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--space-2) var(--space-1);
+  border-right: 1px solid var(--color-divider);
+}
+
+.dayName {
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  color: var(--color-text-muted);
+  letter-spacing: 0.03em;
+}
+
+.todayTag {
+  color: var(--color-accent-text);
+}
+
+.dayNum {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  border-radius: var(--radius-full);
+}
+
+.dayHead.isToday .dayNum {
+  color: var(--color-on-accent);
+  background: var(--color-accent);
+}
+
+.addDay {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  opacity: 0;
+}
+
+.dayHead:hover .addDay,
+.addDay:focus-visible {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .addDay {
+    opacity: 1;
+  }
+}
+
+/* ---------- All-day row ---------- */
+.allDayRow {
+  border-top: 1px solid var(--color-divider);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.allDayLabel {
+  padding: var(--space-2) var(--space-1);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-subtle);
+  text-align: right;
+}
+
+.allDayCell {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-height: 36px;
+  padding: 4px;
+  border-right: 1px solid var(--color-divider);
+}
+
+.isToday {
+  background: color-mix(in srgb, var(--color-accent) 4%, transparent);
+}
+
+/* ---------- Hour grid ---------- */
+.body {
+  max-height: max(360px, calc(100dvh - 300px));
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+  scroll-behavior: smooth;
+}
+
+.hours {
+  border-right: 1px solid var(--color-divider);
+}
+
+.hourLabel {
+  height: var(--hour);
+  padding-right: var(--space-2);
+  font-size: 11px;
+  color: var(--color-text-subtle);
+  text-align: right;
+  transform: translateY(-7px);
+}
+
+.dayCol {
+  position: relative;
+  border-right: 1px solid var(--color-divider);
+}
+
+.slot {
+  height: var(--hour);
+  border-bottom: 1px solid var(--color-divider);
+}
+
+.slotBtn {
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  color: transparent;
+  background: transparent;
+  border: 0;
+}
+
+.slotBtn:hover {
+  color: var(--color-accent-text);
+  background: color-mix(in srgb, var(--color-accent) 8%, transparent);
+  outline: 1px dashed var(--color-accent);
+  outline-offset: -3px;
+}
+
+/* ---------- Events ---------- */
+.eventSlot {
+  position: absolute;
+  z-index: 1;
+  display: flex;
+  /* Lets the block adapt its content to its own size (see @container rules below). */
+  container-type: size;
+}
+
+/* Overlapping blocks get a thin surface-coloured outline so their edges stay visible. */
+.eventSlot .event {
+  box-shadow: 0 0 0 1px var(--color-surface);
+}
+
+.event,
+.chip {
+  --event: var(--color-p4);
+  display: flex;
+  gap: 6px;
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--color-text);
+  background: color-mix(in srgb, var(--event) 14%, var(--color-surface));
+  border-left: 3px solid var(--event);
+  border-radius: var(--radius-sm);
+}
+
+.event {
+  align-items: flex-start;
+  padding: 4px 6px;
+}
+
+.event:hover,
+.chip:hover {
+  background: color-mix(in srgb, var(--event) 22%, var(--color-surface));
+}
+
+.event:focus-within,
+.chip:focus-within {
+  box-shadow: 0 0 0 2px var(--color-focus);
+}
+
+.chip {
+  align-items: center;
+  padding: 2px 6px;
+}
+
+.eventMain,
+.chipMain {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  padding: 0;
+  color: inherit;
+  text-align: left;
+  background: transparent;
+  border: 0;
+}
+
+.eventMain:focus-visible,
+.chipMain:focus-visible {
+  outline: none;
+}
+
+.eventTitle,
+.chipMain {
+  overflow: hidden;
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+}
+
+.chipMain {
+  display: block;
+  white-space: nowrap;
+}
+
+.eventMeta {
+  overflow: hidden;
+  font-size: 11px;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.eventTitle {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+/* Short blocks (<= ~1 hour): one-line title, time only */
+@container (max-height: 52px) {
+  .eventTitle {
+    display: block;
+    white-space: nowrap;
+  }
+
+  .eventMeta + .eventMeta {
+    display: none;
+  }
+}
+
+/* Very short blocks (30 min): title only */
+@container (max-height: 30px) {
+  .event {
+    padding-top: 2px;
+    padding-bottom: 2px;
+  }
+
+  .eventMeta {
+    display: none;
+  }
+}
+
+/* Narrow blocks (heavy overlap): drop the circle, the block itself still opens the task */
+@container (max-width: 64px) {
+  .check {
+    display: none;
+  }
+
+  .event {
+    padding-left: 4px;
+    padding-right: 2px;
+  }
+}
+
+.done {
+  opacity: 0.6;
+}
+
+.done .eventTitle,
+.done .chipMain {
+  text-decoration: line-through;
+}
+
+/* Completion circle; ring colour = priority */
+.check {
+  --ring: var(--color-p4);
+  flex: none;
+  width: 14px;
+  height: 14px;
+  margin-top: 1px;
+  padding: 0;
+  background: var(--color-surface);
+  border: 1.5px solid var(--ring);
+  border-radius: var(--radius-full);
+}
+
+.check[data-priority='1'] {
+  --ring: var(--color-p1);
+}
+
+.check[data-priority='2'] {
+  --ring: var(--color-p2);
+}
+
+.check[data-priority='3'] {
+  --ring: var(--color-p3);
+}
+
+.check[aria-checked='true'] {
+  background: var(--ring);
+}
+
+.now {
+  position: absolute;
+  right: 0;
+  left: 0;
+  z-index: 2;
+  height: 2px;
+  background: var(--color-p1);
+  pointer-events: none;
+}
+
+.now::before {
+  content: '';
+  position: absolute;
+  top: -4px;
+  left: -5px;
+  width: 10px;
+  height: 10px;
+  background: var(--color-p1);
+  border-radius: var(--radius-full);
+}
+
+@media (max-width: 767px) {
+  .calendar {
+    --gutter: 48px;
+  }
+}

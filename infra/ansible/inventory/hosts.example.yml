@@ -1,0 +1,13 @@
+---
+# Copy to hosts.yml (gitignored). Ansible reaches the VM through the VirtualBox
+# Host-only network (static 192.168.56.10, set by the network role). The very first
+# run, before that address exists, goes through a VirtualBox NAT port forward
+# (for example host 127.0.0.1:2222 -> guest 22).
+# The login user comes from ansible.cfg (remote_user = deploy); do not set
+# ansible_user here, it would override `-u nhat` on the bootstrap run.
+all:
+  children:
+    k3s:
+      hosts:
+        k3s-vm:
+          ansible_host: 192.168.56.10

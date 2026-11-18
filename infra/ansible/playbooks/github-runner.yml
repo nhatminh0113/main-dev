@@ -1,0 +1,20 @@
+---
+# Self-hosted GitHub Actions runner (label vps) on the VM. Run after site.yml, k3s.yml,
+# terraform apply (deployer ServiceAccount) and ca-trust.yml. Not part of site.yml: that
+# one must run on a blank VM.
+#
+# First run (the runner is not registered yet), with the API tunnel open:
+#   1. Export the deployer kubeconfig on the control node:
+#        install -d -m 700 ~/.config/taskapp
+#        cd infra/terraform && (umask 077; terraform output -raw deployer_kubeconfig \
+#          > ~/.config/taskapp/deployer.kubeconfig)
+#   2. Encrypt the registration token (valid 1 hour): see vault/github-runner.yml.example
+#   3. ansible-playbook playbooks/github-runner.yml \
+#        --vault-password-file ~/.config/taskapp/vault-pass
+# Later runs need neither the token nor the vault password:
+#   ansible-playbook playbooks/github-runner.yml
+- name: Self-hosted GitHub Actions runner
+  hosts: k3s
+  become: true
+  roles:
+    - role: github_runner

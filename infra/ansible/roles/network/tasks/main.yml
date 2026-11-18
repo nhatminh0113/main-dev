@@ -1,0 +1,86 @@
+---
+- name: Check that the NAT and Host-only adapters exist
+  ansible.builtin.assert:
+    that:
+      - network_uplink_mac | length > 0
+      - (network_uplink_mac | lower) in network_present_macs
+      - network_hostonly_mac | length > 0
+      - (network_hostonly_mac | lower) in network_present_macs
+    fail_msg: >-
+      Set network_uplink_mac and network_hostonly_mac in
+      inventory/host_vars/{{ inventory_hostname }}.yml to the MACs of Adapter 1 (NAT)
+      and Adapter 2 (Host-only) (found: {{ network_present_macs | join(', ') }}).
+    quiet: true
+  vars:
+    network_present_macs: >-
+      {{ ansible_facts['interfaces']
+         | map('regex_replace', '-', '_')
+         | map('extract', ansible_facts, 'macaddress')
+         | select('defined') | map('lower') | list }}
+
+# ---------- NAT adapter ----------
+# Ansible reaches the VM over Host-only, so re-addressing this adapter cannot cut
+# the SSH session that runs the play.
+- name: Write the netplan file of the NAT adapter
+  ansible.builtin.template:
+    src: 50-uplink.yaml.j2
+    dest: /etc/netplan/50-uplink.yaml
+    owner: root
+    group: root
+    mode: "0600"
+  notify: Validate netplan
+
+# Kept as *.disabled (netplan only reads *.yaml) instead of deleted.
+- name: Disable the installer netplan file
+  ansible.builtin.command:
+    cmd: mv {{ network_installer_netplan }} {{ network_installer_netplan }}.disabled
+    removes: "{{ network_installer_netplan }}"
+  notify: Validate netplan
+
+# ---------- Host-only adapter ----------
+# This file adds no route.
+- name: Write the netplan file of the Host-only adapter
+  ansible.builtin.template:
+    src: 60-hostonly.yaml.j2
+    dest: /etc/netplan/60-hostonly.yaml
+    owner: root
+    group: root
+    mode: "0600"
+  notify: Validate netplan
+
+- name: Apply a pending netplan change
+  ansible.builtin.meta: flush_handlers
+
+- name: Wait for the connection after netplan apply
+  ansible.builtin.wait_for_connection:
+    timeout: 60
+
+- name: Refresh network facts
+  ansible.builtin.setup:
+    gather_subset:
+      - "!all"
+      - "!min"
+      - network
+
+- name: Check the Host-only address and the default route
+  ansible.builtin.assert:
+    that:
+      - ansible_facts[network_hostonly_interface]['ipv4']['address'] | default('') == network_hostonly_ip
+      - ansible_facts['default_ipv4']['interface'] | default('') != network_hostonly_interface
+    fail_msg: >-
+      {{ network_hostonly_interface }} should have {{ network_hostonly_ip }} and the
+      default route should stay on the NAT adapter ({{ network_uplink_interface }}).
+    quiet: true
+  when: not ansible_check_mode
+
+# ---------- Local names ----------
+- name: Map the project host names to the Host-only address
+  ansible.builtin.blockinfile:
+    path: /etc/hosts
+    marker: "# {mark} ANSIBLE MANAGED taskapp"
+    block: >-
+      {{ network_hostonly_ip }}
+      {{ network_hosts_names | map('regex_replace', '$', '.' ~ base_domain) | join(' ') }}
+    owner: root
+    group: root
+    mode: "0644"

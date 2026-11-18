@@ -1,0 +1,7 @@
+"""fixture: not valid Python"""
+
+from alembic import op
+
+
+def upgrade() -> None
+    op.drop_table("tasks")

@@ -1,0 +1,9 @@
+# {{ ansible_managed }}
+# Ban an address for 1 hour after 5 failed SSH logins within 10 minutes.
+[sshd]
+enabled  = true
+port     = {{ security_ssh_port }}
+backend  = systemd
+maxretry = 5
+findtime = 10m
+bantime  = 1h
