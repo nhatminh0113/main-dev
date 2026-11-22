@@ -29,3 +29,9 @@ ingress:
 # The chart keeps the feature: set enabled=true and create the Secret to reuse it.
 basicAuth:
   enabled: false
+
+serviceMonitor:
+  enabled: true
+
+prometheusRule:
+  enabled: true

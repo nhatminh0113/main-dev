@@ -8,6 +8,11 @@ output "cluster_issuers" {
   value       = local.cluster_issuer_names
 }
 
+output "grafana_url" {
+  description = "Grafana URL (Traefik Basic Auth first, then the Grafana login)."
+  value       = "https://${local.grafana_host}"
+}
+
 # Public root CA certificate (no private key) to install on Windows and the VM:
 #   terraform output -raw root_ca_certificate > "/mnt/d/ĐỒ ÁN II/kiro-tmp/taskapp-ca.crt"
 output "root_ca_certificate" {

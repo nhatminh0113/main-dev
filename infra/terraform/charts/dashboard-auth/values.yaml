@@ -1,0 +1,3 @@
+middlewareName: grafana-basic-auth
+# Secret (key "users", htpasswd format) in the same namespace.
+secretName: grafana-basic-auth

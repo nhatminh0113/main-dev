@@ -1,0 +1,10 @@
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: {{ required "middlewareName is required" .Values.middlewareName }}
+  namespace: {{ .Release.Namespace }}
+spec:
+  basicAuth:
+    secret: {{ required "secretName is required" .Values.secretName }}
+    # Do not forward the Basic credentials: Grafana would try them as its own login.
+    removeHeader: true
