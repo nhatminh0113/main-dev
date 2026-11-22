@@ -20,11 +20,16 @@ ENV API_UPSTREAM=http://backend:8000
 
 # Fixable HIGH/CRITICAL CVEs in the base image: libexpat CVE-2026-113351 (2.10.0-r0),
 # brotli-libs CVE-2026-111497 (1.2.1-r0), curl/libcurl CVE-2026-92392 (8.23.0-r0),
-# libxslt CVE-2026-87636 (1.1.43-r4), musl/musl-utils CVE-2026-107891 (1.2.6-r3), zlib CVE-2026-85091 (1.3.2-r1).
+# libxslt CVE-2026-87636 (1.1.43-r4), musl/musl-utils CVE-2026-107891 (1.2.6-r3), zlib CVE-2026-85091 (1.3.2-r1),
+# libxml2 CVE-2026-86144 (2.13.9-r3), nginx CVE-2026-113425 and 5 more (1.30.7-r0).
 # Require the fixed versions explicitly. Remove this block once the base image tag includes them.
 USER root
 RUN apk add --no-cache 'libexpat>=2.10.0-r0' 'brotli-libs>=1.2.1-r0' 'curl>=8.23.0-r0' 'libcurl>=8.23.0-r0' \
-    'libxslt>=1.1.43-r4' 'musl>=1.2.6-r3' 'musl-utils>=1.2.6-r3' 'zlib>=1.3.2-r1'
+    'libxslt>=1.1.43-r4' 'musl>=1.2.6-r3' 'musl-utils>=1.2.6-r3' 'zlib>=1.3.2-r1' \
+    'libxml2>=2.13.9-r3'
+# nginx 1.30.7 is not packaged with dynamic modules yet and the unused ones pin 1.30.6, so drop them.
+RUN apk del --no-cache nginx-module-geoip nginx-module-image-filter nginx-module-njs nginx-module-xslt && \
+    apk add --no-cache 'nginx>=1.30.7-r0'
 USER 101
 
 # Rendered by the image's entrypoint (envsubst) into /etc/nginx/conf.d/default.conf
