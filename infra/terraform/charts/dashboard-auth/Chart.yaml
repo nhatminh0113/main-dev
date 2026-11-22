@@ -1,0 +1,6 @@
+apiVersion: v2
+name: dashboard-auth
+description: "Traefik Basic Auth Middleware for the Grafana Ingress. Deployed by Terraform before kube-prometheus-stack."
+type: application
+# Bump on every template change so helm_release picks it up.
+version: 0.1.0

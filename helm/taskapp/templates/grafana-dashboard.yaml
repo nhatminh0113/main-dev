@@ -1,0 +1,14 @@
+{{- if .Values.grafanaDashboard.enabled }}
+# Picked up by the Grafana dashboard sidecar (label grafana_dashboard=1, all namespaces).
+# Enable in one release only: two releases would ship the same dashboard uid.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "taskapp.fullname" . }}-grafana-dashboard
+  labels:
+    {{- include "taskapp.labels" (dict "ctx" . "component" "dashboard") | nindent 4 }}
+    grafana_dashboard: "1"
+data:
+  taskapp-overview.json: |-
+    {{- .Files.Get "dashboards/taskapp-overview.json" | nindent 4 }}
+{{- end }}
